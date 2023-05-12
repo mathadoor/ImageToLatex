@@ -1,10 +1,13 @@
-# download CROHME Dataset to the data folder in the current directory
-# If the data already exists, do not download again
-# Usage: bash get_data.sh
+if [ -d data]; then
+    echo "data directory already exists"
+    else mkdir data
+fi
+
 if [ -d data/ICFHR_package ]; then
     echo "data already exists, cleaning up the directory"
     rm -rf data/ICFHR_package
 fi
+
 if [ -f data/ICFHR_package.zip ]; then
     echo "Would you like to redownload?"
     select yn in "Yes" "No"; do
