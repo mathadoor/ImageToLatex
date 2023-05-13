@@ -1,4 +1,4 @@
-if [ -d data]; then
+if [ -d data ]; then
     echo "data directory already exists"
     else mkdir data
 fi
@@ -9,7 +9,7 @@ if [ -d data/ICFHR_package ]; then
 fi
 
 if [ -f data/ICFHR_package.zip ]; then
-    echo "Would you like to redownload?"
+    echo "Would you like to download the package again?"
     select yn in "Yes" "No"; do
         case $yn in
             Yes )
@@ -22,4 +22,7 @@ if [ -f data/ICFHR_package.zip ]; then
     done
     else wget http://www.isical.ac.in/~crohme/ICFHR_package.zip -P data
 fi
+
 unzip data/ICFHR_package.zip -d data && rm data/ICFHR_package.zip
+
+# I need to further review the data structure and decide how to organize the data
