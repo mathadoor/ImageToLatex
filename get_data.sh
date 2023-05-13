@@ -8,6 +8,7 @@ if [ -d data/ICFHR_package ]; then
     rm -rf data/ICFHR_package
 fi
 
+
 if [ -f data/ICFHR_package.zip ]; then
     echo "Would you like to download the package again?"
     select yn in "Yes" "No"; do
