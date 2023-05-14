@@ -61,3 +61,8 @@ The InkML contains three kinds of information:
 ### 3. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
 ### 4. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
+
+[2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
+
+[2023 CROHME DATASET](https://crohme2023.ltu-ai.dev/data-tools/)
+

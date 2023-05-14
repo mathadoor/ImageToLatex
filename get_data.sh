@@ -1,3 +1,5 @@
+# Full Dataset - 2023: https://uncloud.univ-nantes.fr/index.php/s/R9tWZSG3XeQbEeC/download
+
 if [ -d data ]; then
     echo "data directory already exists"
     else mkdir data
