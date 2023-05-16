@@ -64,5 +64,13 @@ The InkML contains three kinds of information:
 
 [2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
 
-[2023 CROHME DATASET](https://crohme2023.ltu-ai.dev/data-tools/)
+[2023 CROHME DATASET](https://crohme2023.ltu-ai.dev/data-tools/)  
+It seems that the dataset consists of the dataset from the previous cases. We have essentially
+three different type of challenges in this:  
+1. Online Handwritten Task: in this case the input comes as polylines from a pen. The algorithm is supposed to 
+recognize the expression, the bounding box of each symbol and the label of each symbol.
+2. Offline Handwritten Task: in this case, the input is a set of prewritten equations.
+3. BiModal Handwritten Task: In this case, we have both the poly lines and the prewritten equations as the input.
+The dataset is also much bigger than the previous ones. It has over 10979 inkml files with 150k aritifically generated
+files. We also have 1045 real equations. The validation set is based on CROHME2016_test set of size 1147. 
 
