@@ -56,6 +56,19 @@ The InkML contains three kinds of information:
 </ink>
 ```
 
+Five different research groups submitted their system to evaluate their performance. The information about these systems
+are only given at a high level. Most of them employ a multi-stage approach where one of the stages is symbol segmentation. 
+Some models used Hidden Markov Model while other used feed forward architecture. The systems are evaluated at 4 different level:  
+1. Stroke Level Classification Rate - this would enable online handwriting recognition  
+2. Symbol Segmentation Rate - whether the symbols are correctly segmented  
+3. Symbol Recognition Rate - whether the symbols are correctly recognized
+4. Expression Recognition Rate - whether the expression is correctly recognized
+For this particular scenario, we are interested in maximizing the 4th metric($EXP_rec$). All systems struggle to get a 
+a reasonably high score. SYstem-V is the best performing system with a score of 40.88% on Test Data 1 and 22.41% on Test Data 2.
+The system aims to simultaneoulsy optimize symbol segmentation, symbol recognition, and 2D structure recognition with a cost
+function that defines the likelihood of a solution. A dynamic programming scheme at the end gives a best solution according
+to a 2D grammar and a neural network based classifier. The paper can be accessed [here](https://ieeexplore.ieee.org/document/5277511).
+
 ### 2. [CROHME 2012 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/CROHME_ICFHR_2012.pdf)
 
 ### 3. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
