@@ -70,7 +70,17 @@ function that defines the likelihood of a solution. A dynamic programming scheme
 to a 2D grammar and a neural network based classifier. The paper can be accessed [here](https://ieeexplore.ieee.org/document/5277511).
 
 ### 2. [CROHME 2012 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/CROHME_ICFHR_2012.pdf)
-
+Key Differences from 2011:  
+1. More samples than before (1336 training and 488 test samples divided into 3 parts). Each part is represented
+by its respective grammar. A new part is added to the training set this time. The extent of grammar for various parts
+is as follows:
+    1.1 Part 1: 296 expressions with 1D grammar containing (a) only 41 terminals with a number of limitation on the logical relationships.
+    1.2 Part 2: 921 expressions with 2D grammar - grammar is less restricted than part 1. There are 60 terminal symbols.
+    1.3 Part 3: 1336 expressions with 3D grammar - further relaxes the restrictions on part 2. There are 75 terminal symbols including Greek Letters and set operators.
+2. More participants including industry research labs (7 Submissions) - best one uses Neural network as a classifier but it
+grounded in the realization that segmentation, recognition, and interpretation must be handled concurrently and at the same level.
+Another interesting analysis shows the distribution of error is strongly correlated with the length of the expressions.
+Longer expressions are more difficult to recognize correctly and thus the accuracy decreases.
 ### 3. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
 ### 4. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
