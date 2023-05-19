@@ -110,9 +110,25 @@ these invalid symbols. Interestingly, there are no invalid symbols in the traini
 symbols and 10061 valid symbols. 
 2. This task concerns itself with recognizing expressions containing matrices. The training dataset contains 362 matrices with 2332
 cells and 4281 symbols. The grammar is consistent of expressions is otherwise consistent with task 2. The test dataset contains 175
-matrices with 1075 cells and 2101 symbols.  
-3. Overall the system performed is claimed to improve related to previous competitions.
+matrices with 1075 cells and 2101 symbols.
 
+The best performing system from 2013 performs the best again in 2014. The system seems proprietary and does not have 
+information about the architecture. The system is trained on a private dataset. The only thing available in the paper is
+that it is built on the principle that segmentation, recognition, and interpretation must be handled concurrently and at 
+the same level. The system also has a symbol expert that estimates the probability for all parts in the suggested segmentation.
+The best system other than the proprietary one is based on a combination of BiLSTM. Its performance however
+is significantly worse than the proprietary system. 
+
+### 5. [CROHME 2016 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/icfhr_crohme2016.pdf)
+Just like in previous years, the main task is recognizing formula from handwritten strokes. In addition, following tasks
+are also used for evaluation:
+2a. Classification of isolated symbols
+2b. Classification of isolated symbols with reject option
+3. A new task on parsing formula structure from valid handwritten symbols
+4. Parsing expressions with matrices.
+
+This time there were 6 participants. MyScript performs the best in all tasks just like before. However the improvement is
+only by 5%, which hints at the difficulty of the task. 
 
 ### 4. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
