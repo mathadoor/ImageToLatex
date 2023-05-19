@@ -81,9 +81,29 @@ is as follows:
 grounded in the realization that segmentation, recognition, and interpretation must be handled concurrently and at the same level.
 Another interesting analysis shows the distribution of error is strongly correlated with the length of the expressions.
 Longer expressions are more difficult to recognize correctly and thus the accuracy decreases.
-### 3. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
-### 4. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
+### 3. [CROHME 2013 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/ICDAR_CROHME2013.pdf)
+The training set has been expanded to over 8000 expressions! New tools developed for evaluating performance at all levels.
+The performance of the participating systems from CROHME 2012 is also reported. In 2013, 8 systems participated as compared
+to 6 in 2012.
+
+More participating systems are based on neural networks including LSTM, Vanilla MLPs. The best performing system was 
+pretrained on writing samples collected from writers in several countries. Just like before this system also handles
+segmentation, recognition, and interpretation concurrently. Further the system was trained using roughly 30,000 math
+expressions in a private corpus.
+
+In this case the competition was divided into two parts: first was the most complex expression grammar from 2012 and the second
+part had the added grammar. The training data for the first part (1341 expressions) is a subset of the second part.
+
+Now, in terms of the results, the best performing system from 2012 was able to achieve a score of 70.16 on part 1 due to
+having a larger training set. The information about whether the system was retrained on the new training set is not given.
+For part 2, the organizers also introduced a varying degree of difficulty for the expressions evaluation. For example, they
+computed the accuracy under increasing number of allowed errors. The best performing system was able to achieve scores of
+60.36, 80.33, 84.95, 86.14 for 0, <= 1, <=2, <=3 errors respectively. 
+
+### 4. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
+
+### 5. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
 
 [2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
 
