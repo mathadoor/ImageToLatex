@@ -99,7 +99,20 @@ Now, in terms of the results, the best performing system from 2012 was able to a
 having a larger training set. The information about whether the system was retrained on the new training set is not given.
 For part 2, the organizers also introduced a varying degree of difficulty for the expressions evaluation. For example, they
 computed the accuracy under increasing number of allowed errors. The best performing system was able to achieve scores of
-60.36, 80.33, 84.95, 86.14 for 0, <= 1, <=2, <=3 errors respectively. 
+60.36, 80.33, 84.95, 86.14 for 0, <= 1, <=2, <=3 errors respectively.
+
+### 4. [CROHME 2014 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/CROHME_ICFHR_2014.pdf)
+In 2014, two additional tasks were introduced - 1. isolated symbol recognition with reject option for invalid symbol hypothesis
+and 2. expressions containing matrices. Thus there are three tasks in total:
+1. Isolated Symbol Recognition: symbol are first extracted from an expression, and then classified into one of the 101 classes.
+The expressions are also mis-segmented on purpose to produce samples with invalid symbols. The system is expected to reject
+these invalid symbols. Interestingly, there are no invalid symbols in the training set. The test set contains 9161 invalid
+symbols and 10061 valid symbols. 
+2. This task concerns itself with recognizing expressions containing matrices. The training dataset contains 362 matrices with 2332
+cells and 4281 symbols. The grammar is consistent of expressions is otherwise consistent with task 2. The test dataset contains 175
+matrices with 1075 cells and 2101 symbols.  
+3. Overall the system performed is claimed to improve related to previous competitions.
+
 
 ### 4. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
