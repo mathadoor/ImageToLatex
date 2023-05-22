@@ -130,6 +130,22 @@ are also used for evaluation:
 This time there were 6 participants. MyScript performs the best in all tasks just like before. However the improvement is
 only by 5%, which hints at the difficulty of the task. 
 
+### 6. [CROHME 2019 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/CROHME_2019.pdf)  
+In 2019, the participants can choose between two tasks of handwritten formula recognition - 1) Generated from online stroke
+data and 2) Generated from offline image data. To compare $\LaTeX$ strings, they are converted stroke based label graphs
+defiened over symbols. However, it seems this is only needed for task 1. Overall, the results improved further from last
+competition with the best performing system recognizing 77% of the time. There is additional task introduced on typeset
+formula detection in document images. Here is the description of various tasks:
+
+Task 1: Online Handwritten Formula Recognition. 1a - recognize isolated symbols. 1b: parse formulas from provided symbols.
+Task 2: Offline Handwritten Formula Recognition. 2a - recognize isolated symbols including the invalid ones. 2b: parse 
+formulas from provided symbols.
+Task 3: Given a document page along with the bounding boxes of characters, identify formulas. 
+
+The best performing system are based on a combination of CNN and RNN. It reaches a classification accuracy of 77.15 for 
+task 1b and 2b. It is worth reading about. 
+
+
 ### 4. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
 
 ### 5. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
