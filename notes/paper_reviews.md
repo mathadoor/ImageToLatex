@@ -1,5 +1,6 @@
 This documents serves to note down my reviews on papers I read for this project. 
-
+# Literature Review
+## Docments and Datasets
 ### 1. [CROHME 2011 Competition on Recognition of Online Handwritten Mathematical Expressions](../data/ICFHR_package/CROHME_papers/CROHME_ICDAR_2011.pdf)
 The training set consists of 921 expression and supplies the underlyin ggrammar for understanding the content of the
 training data. The test data consists of 348 expressions. The evalutation criteria is based on four different aspects of
@@ -145,14 +146,7 @@ Task 3: Given a document page along with the bounding boxes of characters, ident
 The best performing system are based on a combination of CNN and RNN. It reaches a classification accuracy of 77.15 for 
 task 1b and 2b. It is worth reading about. 
 
-
-### 4. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
-
-### 5. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
-
-[2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
-
-[2023 CROHME DATASET](https://crohme2023.ltu-ai.dev/data-tools/)  
+### 7. [2023 CROHME DATASET](https://crohme2023.ltu-ai.dev/data-tools/)  
 It seems that the dataset consists of the dataset from the previous cases. We have essentially
 three different type of challenges in this:  
 1. Online Handwritten Task: in this case the input comes as polylines from a pen. The algorithm is supposed to 
@@ -161,4 +155,31 @@ recognize the expression, the bounding box of each symbol and the label of each 
 3. BiModal Handwritten Task: In this case, we have both the poly lines and the prewritten equations as the input.
 The dataset is also much bigger than the previous ones. It has over 10979 inkml files with 150k aritifically generated
 files. We also have 1045 real equations. The validation set is based on CROHME2016_test set of size 1147. 
+
+
+### 8. [Image to Latex Dataset - Kaggle](https://www.kaggle.com/datasets/shahrukhkhan/im2latex100k)
+
+## Models 
+
+### 1. [Towards Handwritten Mathematical Expression Recognition](http://pagesperso.ls2n.fr/~mouchere-h/pdf/Awal_ICDAR2009.pdf)
+The architecture is used for online handwritten mathematical expression recognition. An expression recognition follows 
+the following pipeline: first, the strokes are clustered into potential symbols. Then, these symbols are classified, and 
+the collection of symbols is synthesized into a mathematical expression. The architecture learns the segmentation, 
+classification, and synthesis simultaneously. The architecture looks as follows:
+
+![Global Architecture](../assets/awal.png)
+
+The hypothesis generator generates all different combinations of strokes that can be grouped into a symbol. The MLP 
+classifier then classifies the symbol. The language model validates the structure of the expression. The decision
+module then decides whether to accept or reject the hypothesis. The architecture is trained end-to-end. 
+
+### 1. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
+Automatic feature recognition with bi-directional LSTM and CNN architecture. 
+
+### 2. [Watch, stand, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
+
+
+
+[2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
+
 
