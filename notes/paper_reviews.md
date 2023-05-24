@@ -173,10 +173,18 @@ The hypothesis generator generates all different combinations of strokes that ca
 classifier then classifies the symbol. The language model validates the structure of the expression. The decision
 module then decides whether to accept or reject the hypothesis. The architecture is trained end-to-end. 
 
-### 1. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
-Automatic feature recognition with bi-directional LSTM and CNN architecture. 
+### 2. [Named Entity Recognition with Bidirectional LSTM-CNNs](https://aclanthology.org/Q16-1026.pdf)
+Automatic feature recognition with bi-directional LSTM and CNN architecture. BiDirectional LSTM is used to allow context 
+information to flow in both directions. CNN is used to capture local information. The architecture looks as follows:
 
-### 2. [Watch, stand, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
+![BiDIrcetional LSTM](../assets/BiDirectional_LSTM.png)
+
+Since it's a name entity recognition problem, we have sentence structure as the input. Thus, there is a need for creating
+a character embedding. The words are appropriated parsed and normalized. A separate feature is added to communicate the 
+unnormalized property to recover the original character for example allCaps, upperInitial, lowercase,
+mixedCaps, noinfo. 
+
+### 3. [Watch, stand, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
 
 
 
