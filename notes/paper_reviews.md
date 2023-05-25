@@ -185,7 +185,13 @@ unnormalized property to recover the original character for example allCaps, upp
 mixedCaps, noinfo. 
 
 ### 3. [Watch, stand, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
+Similar setup as before except in this case we encode the image with CNN and then use LSTM with attention mechanism to 
+decode the sequence. They started from a model architecture similar to the one used for [image captioning](https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Vinyals_Show_and_Tell_2015_CVPR_paper.pdf)
 
+They varied the depth of the CNN to find the best performing model. For the LSTM, they also added coverage vector for 
+improved performance. I need to read a little bit more about the coverage.
+
+### 4. [Modeling Coverage for Neural Machine Translation](https://arxiv.org/pdf/1601.04811.pdf)
 
 
 [2011-2014 Dataset](https://www.kaggle.com/datasets/rtatman/handwritten-mathematical-expressions)
