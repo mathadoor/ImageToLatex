@@ -1,0 +1,14 @@
+Train:
+  BatchSize: 64
+  LearningRate: 0.1
+  Reg: 0.001
+  Epochs: 10
+
+Model:
+  NumLayers: 3
+  Kernel: 3
+  LayerDims: [32, 64, 128]
+
+Data:
+  Type: CHROME
+
