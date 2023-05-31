@@ -23,7 +23,9 @@ fi
 unzip data/WebData_CROHME23.zip -d data/CROHME/temp
 mv data/CROHME/temp/WebData_CROHME23/* data/CROHME/temp
 
-# Extract the contents of WebData_CROHME23_new_v2.3.zip and WebData_CROHME23_v1.1.zip
+# Extract the contents of datasets within the Zip files. NOTE: THIS MAY NEED TO BE UPDATED
+echo "Extracting the contents of the datasets within the Zip files..."
+echo "This may need to be updated if the dataset changes. Please check the source if this fails."
 unzip -q data/CROHME/temp/WebData_CROHME23_new_v2.3.zip -d data/CROHME/temp
 unzip -q data/CROHME/temp/WebData_CROHME23_v1.1.zip -d data/CROHME/temp
 #
@@ -35,6 +37,8 @@ cp data/CROHME/temp/WebData_CROHME23/train/INKML/CROHME2019_*/* data/CROHME/trai
 cp data/CROHME/temp/WebData_CROHME23_new_v2.3/new_train/INKML/* data/CROHME/train/INKML/
 
 # Copy the synthetic inkml files to the SYNTHETIC folder
+echo "Copying the synthetic inkml files to the SYNTHETIC folder..."
+echo "This will take a while..."
 src="data/CROHME/temp/WebData_CROHME23_new_v2.3/Syntactic_data/INKML/"
 dst="data/CROHME/train/SYNTHETIC/"
 
