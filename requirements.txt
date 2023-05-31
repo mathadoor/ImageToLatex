@@ -7,3 +7,4 @@ scikit-image
 tqdm
 torch
 torchvision
+python-decouple
