@@ -1,31 +1,48 @@
-# Full Dataset - 2023: https://uncloud.univ-nantes.fr/index.php/s/R9tWZSG3XeQbEeC/download
+# Download the data, place it in the data folder, and run this script
 
-if [ -d data ]; then
-    echo "data directory already exists"
-    else mkdir data
+if [ ! -f data/WebData_CROHME23.zip ]; then
+    echo "File not found!"
+    echo "Please download the dataset from https://uncloud.univ-nantes.fr/index.php/s/R9tWZSG3XeQbEeC/download"
+    echo "and place it in the data folder"
+    exit 1
 fi
 
-if [ -d data/ICFHR_package ]; then
-    echo "data already exists, cleaning up the directory"
-    rm -rf data/ICFHR_package
+# If CROHME dataset folder does not exist, create it
+if [ ! -d data/CROHME ]; then
+    mkdir -p data/CROHME/train/IMG
+    mkdir data/CROHME/train/INKML
+    mkdir data/CROHME/train/IMG_RENDERED
+    mkdir data/CROHME/train/SYNTHETIC
+    mkdir -p data/CROHME/val/IMG
+    mkdir data/CROHME/val/IMG_RENDERED
+    mkdir data/CROHME/val/INKML
+    mkdir data/CROHME/val/SYNTHETIC
 fi
 
+# Unzip the dataset
+unzip data/WebData_CROHME23.zip -d data/CROHME/temp
+mv data/CROHME/temp/WebData_CROHME23/* data/CROHME/temp
 
-if [ -f data/ICFHR_package.zip ]; then
-    echo "Would you like to download the package again?"
-    select yn in "Yes" "No"; do
-        case $yn in
-            Yes )
-              rm data/ICFHR_package.zip;
-              wget http://www.isical.ac.in/~crohme/ICFHR_package.zip -P data;
-              break;;
-            No )
-              echo "Using the existing zip file";;
-        esac
-    done
-    else wget http://www.isical.ac.in/~crohme/ICFHR_package.zip -P data
-fi
+# Extract the contents of WebData_CROHME23_new_v2.3.zip and WebData_CROHME23_v1.1.zip
+unzip -q data/CROHME/temp/WebData_CROHME23_new_v2.3.zip -d data/CROHME/temp
+unzip -q data/CROHME/temp/WebData_CROHME23_v1.1.zip -d data/CROHME/temp
+#
+## Copy the image files to the IMG folder
+cp data/CROHME/temp/WebData_CROHME23/OffHME-dataset1/img/* data/CROHME/train/IMG/
 
-unzip data/ICFHR_package.zip -d data && rm data/ICFHR_package.zip
+# Copy the inkml files to the INKML folder
+cp data/CROHME/temp/WebData_CROHME23/train/INKML/CROHME2019_*/* data/CROHME/train/INKML/
+cp data/CROHME/temp/WebData_CROHME23_new_v2.3/new_train/INKML/* data/CROHME/train/INKML/
 
-# I need to further review the data structure and decide how to organize the data
+# Copy the synthetic inkml files to the SYNTHETIC folder
+src="data/CROHME/temp/WebData_CROHME23_new_v2.3/Syntactic_data/INKML/"
+dst="data/CROHME/train/SYNTHETIC/"
+
+find "$src" -type f -exec sh -c '
+  f="$1"
+  base=$(basename "$f")
+  parent=$(basename $(dirname "$f"))
+  cp "$f" "$0/$parent-$base"
+' "$dst" {} \;
+
+rm -rf data/CROHME/temp
