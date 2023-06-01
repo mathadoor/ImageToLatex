@@ -1,5 +1,5 @@
 import numpy as np
-from skimage.draw import line
+from skimage.draw import line, disk
 from skimage.io import imsave
 import pandas as pd
 import os, re
@@ -22,7 +22,7 @@ CROHME_VAL = os.path.join(CROHME_PATH, 'val')
 IMG_SIZE = (128, 128)
 
 # GENERATE IMAGES
-def generate_image(INKML_file, img_loc, img_size=IMG_SIZE):
+def generate_image(INKML_file, img_loc, img_size=IMG_SIZE, line_width=2):
     '''
     :param INKML_file: contains the stroke data and the annotation truth. The stroke data is stored as trace element
     :param img_size: size of the output image
@@ -60,8 +60,13 @@ def generate_image(INKML_file, img_loc, img_size=IMG_SIZE):
             x2 = int((trace[i + 1][0] - min_x) / (max_x - min_x) * (img_size[1] - 1))
             y2 = int((trace[i + 1][1] - min_y) / (max_y - min_y) * (img_size[0] - 1))
 
+            # Create a line from (x1, y1) to (x2, y2)
             rr, cc = line(y1, x1, y2, x2)
-            img[rr, cc] = 0
+
+            # For each pixel on the line, create a disk of radius line_width / 2 and set it to black
+            for r, c in zip(rr, cc):
+                rr_disk, cc_disk = disk((r, c), radius=line_width, shape=img.shape)
+                img[rr_disk, cc_disk] = 0  # Set the pixels within the disk to black
 
     # Save the image
     imsave(img_loc + INKML_file.split('/')[-1].split('.')[0] + '.png', img)
