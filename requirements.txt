@@ -8,3 +8,4 @@ tqdm
 torch
 torchvision
 python-decouple
+pylatexenc

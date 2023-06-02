@@ -1,29 +1,21 @@
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
+from torch.utils.data import Dataset
+from PIL import Image
 
-# Going to have to import the inkML files instead to accomodate the data.
-# I think I might as well create different classes pertaining to stroke data. But that is not important at this point
-
-# Custom Class to load the data into dataloader
-class StrokeData(Dataset):
-
-    def __init__(self, path, transform=None):
-        self.path = path
+class ImageDataset(Dataset):
+    def __init__(self, image_paths, labels, transform=None):
+        self.image_paths = image_paths
+        self.labels = labels
         self.transform = transform
 
+    def __getitem__(self, index):
+        # load image as ndarray type (H x W x C) in grey scale format
+        image = Image.open(self.image_paths[index]).convert('L')
+
+        # apply image transformation
+        if self.transform is not None:
+            image = self.transform(image)
+
+        return image, self.labels[index]
+
     def __len__(self):
-        return len(self.path)
-
-    def __getitem__(self, idx):
-
-        # Load the data from the path
-        data = np.load(self.path[idx])
-
-        # Get the label from the path
-        label = self.path[idx].split('/')[-1].split('.')[0]
-
-        # Transform the data
-        if self.transform:
-            data = self.transform(data)
-
-        return data, label
+        return len(self.image_paths)

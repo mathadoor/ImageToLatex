@@ -17,6 +17,18 @@ CROHME_TRAIN = os.path.join(CROHME_PATH, 'train')
 CROHME_VAL = os.path.join(CROHME_PATH, 'val')
 IMG_SIZE = (512, 512)
 
+def get_path(kind):
+    '''
+    :param kind: train or val
+    :return: path to the dataset
+    '''
+    if kind == 'train':
+        return CROHME_TRAIN
+    elif kind == 'val':
+        return CROHME_VAL
+    else:
+        raise Exception("Invalid kind. Choose between train and val.")
+
 # GENERATE IMAGES
 def generate_image(inkml_file, img_loc, img_size=IMG_SIZE, line_width=2, export_label=False, label_loc=None):
     '''
