@@ -1,9 +1,24 @@
-from utils.data_loader import ImageDataset
+from utils.datasets import ImageDataset
+from utils.data_utils import get_path
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
-import os, re
+import pandas as pd
 
-CROHME_PATH = os.path.abspath(__file__)
-CROHME_PATH = re.findall('(.+/ImageToLatex).*', CROHME_PATH)[0]
-CROHME_PATH = os.path.join(CROHME_PATH, 'data/CROHME')
+CROHME_TRAIN = get_path(kind = 'train')
+print(CROHME_TRAIN)
+BATCH_SIZE = 32
+train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')
 
+# Define your transforms
+transform = transforms.Compose([transforms.ToTensor()])
+
+
+dataset = ImageDataset(train_data_csv['image_loc'], train_data_csv['label'], transform=transform)
+
+# Define your dataloader
+dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+
+# Iterate through DataLoader
+for x, y in dataloader:
+    print(x, y)
+    break
