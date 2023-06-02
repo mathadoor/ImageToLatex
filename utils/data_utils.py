@@ -127,25 +127,26 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
     img_files = os.listdir(img_loc)
 
     # Dataframe to export the csv file
-    df = pd.DataFrame(columns=['image', 'label'])
+    df = pd.DataFrame(columns=['image_loc', 'label'])
 
-    # For each image file, get the corresponding label file and add it to the dataframe
-    for IMG_file in tqdm(img_files):
-        # Get the corresponding label file
-        label_file = IMG_file.split('.')[0] + '.txt'
+    # For each image file, get the corresponding label file and add it to the dataframe along with the image location
+    for img_file in tqdm(img_files):
+        # Get the label file
+        label_file = label_loc + img_file.split('.')[0] + '.txt'
 
-        # Read the label
-        with open(os.path.join(label_loc, label_file), 'r') as f:
-            label = f.readline()
+        # Read the label file
+        with open(label_file, 'r') as f:
+            label = f.read()
 
-        # Add the image and label to the dataframe
-        new_row = pd.DataFrame([[IMG_file, label]], columns=['image', 'label'])
+            # Add the image and label to the dataframe
+        new_row = pd.DataFrame([[img_loc + img_file, label]], columns=['image_loc', 'label'])
         df = pd.concat([df, new_row], ignore_index=True)
+
     # Export the dataframe to csv
     df.to_csv(csv_loc, index=False)
 
 # Main Function
 if __name__ == '__main__':
-    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
