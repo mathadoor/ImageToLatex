@@ -1,30 +1,39 @@
 # Define the model architectures here
 from torch import nn
-from train.utils.global_params import *
 
-class VanilleWAP(nn.Module):
+class VanillaWAP(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.watcher = None
         self.tokenizer = None
         self.positional_encoder = None
         self.parser = None
-
-        if not config:
-            self.config = BASE_CONFIG
+        self.config = config
 
         self.generate_watcher()
-        self.generate_embedder()
+        self.generate_tokenizer()
+        self.generate_positional_encoder()
         self.generate_parser()
 
+    def forward(self, x):
+        # CNN Feature Extraction
+        x = self.watcher(x)
+
+        # Positional Encoding
+        # x = x + self.positional_encoder(x)
+
+        # RNN Decoder
+        # x = self.parser(x)
+
+        return x
     def generate_watcher(self):
         '''
         Generate the model based on the config
         :return: None
         '''
         self.watcher = nn.Sequential()
-        layer_dims = [CNN_INPUT_DIM] + self.config['num_features_map']
-        for i in range(self.config['num_layers'] + 1):
+        layer_dims = [self.config['input_dim']] + self.config['num_features_map']
+        for i in range(self.config['num_layers']):
             self.watcher.add_module('conv{}'.format(i),
                                     nn.Conv2d(layer_dims[i], layer_dims[i+1],
                                             self.config['feature_kernel_size'][i],
@@ -43,26 +52,28 @@ class VanilleWAP(nn.Module):
 
         self.watcher.to(self.config['DEVICE'])
 
-    def train(self):
+    def generate_positional_encoder(self):
+        '''
+        Adds positional encodings to the
+        :return:
+        '''
         pass
 
-    def test(self):
+    def generate_tokenizer(self):
+        '''
+        Generates the tokenizer
+        :return:
+        '''
+        pass
+
+    def generate_parser(self):
+        '''
+        Generates the parser
+        :return:
+        '''
         pass
 
     def predict(self):
-        pass
-
-    def save(self):
-        pass
-
-    def load(self):
-        pass
-
-class VanilleCNNParser(baseParser):
-    def __init__(self, config):
-        super().__init__(config)
-
-    def parse(self):
         pass
 
     def save(self):

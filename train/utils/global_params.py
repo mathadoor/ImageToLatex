@@ -16,6 +16,7 @@ CNN_INPUT_DIM = 32
 # Base Model Parameters
 BASE_CONFIG = {
     'num_layers': 6,
+    'input_dim': CNN_INPUT_DIM,
     'num_features_map': [64, 128, 256, 256, 512, 512],
     'feature_kernel_size': [3, 3, 3, 3, 3, 3],
     'feature_kernel_stride': [1, 1, 1, 1, 1, 1],

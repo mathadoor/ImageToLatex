@@ -1,6 +1,7 @@
 from utils.datasets import ImageDataset
-from utils.global_params import CROHME_TRAIN, CNN_INPUT_DIM
+from utils.global_params import CROHME_TRAIN, CNN_INPUT_DIM, BASE_CONFIG
 from torch.utils.data import DataLoader
+from models import VanillaWAP
 import torchvision.transforms as transforms
 import pandas as pd
 
@@ -16,7 +17,9 @@ dataset = ImageDataset(train_data_csv['image_loc'], train_data_csv['label'], tra
 # Define your dataloader
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
 
+# Model
+model = VanillaWAP(BASE_CONFIG)
 # Iterate through DataLoader
 for x, y in dataloader:
-    print(x.shape)
+    print(model(x).shape)
     break
