@@ -32,7 +32,7 @@ class VanillaWAP(nn.Module):
         :return: None
         '''
         self.watcher = nn.Sequential()
-        layer_dims = [self.config['input_dim']] + self.config['num_features_map']
+        layer_dims = [self.config['input_channels']] + self.config['num_features_map']
         for i in range(self.config['num_layers']):
             self.watcher.add_module('conv{}'.format(i),
                                     nn.Conv2d(layer_dims[i], layer_dims[i+1],
