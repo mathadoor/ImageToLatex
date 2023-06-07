@@ -6,16 +6,12 @@ import os, re
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
+from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, IMG_SIZE
+
 # GLOBAL VARIABLES
 # GET CROHME DATASET PATH
-CROHME_PATH = os.path.abspath(__file__)
-CROHME_PATH = re.findall('(.+/ImageToLatex).*', CROHME_PATH)[0]
-CROHME_PATH = os.path.join(CROHME_PATH, 'data/CROHME')
 
 # DATASET LOCATIONS
-CROHME_TRAIN = os.path.join(CROHME_PATH, 'train')
-CROHME_VAL = os.path.join(CROHME_PATH, 'val')
-IMG_SIZE = (512, 512)
 
 def get_path(kind):
     '''

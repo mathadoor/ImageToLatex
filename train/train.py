@@ -1,17 +1,14 @@
 from utils.datasets import ImageDataset
-from utils.data_utils import get_path
+from utils.global_params import CROHME_TRAIN, CNN_INPUT_DIM
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 import pandas as pd
 
-CROHME_TRAIN = get_path(kind = 'train')
-print(CROHME_TRAIN)
 BATCH_SIZE = 32
-IMAGE_SIZE = 32
 train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')
 
 # Define your transforms
-transform = transforms.Compose([transforms.Resize(IMAGE_SIZE), transforms.ToTensor()])
+transform = transforms.Compose([transforms.Resize(CNN_INPUT_DIM), transforms.ToTensor()])
 
 
 dataset = ImageDataset(train_data_csv['image_loc'], train_data_csv['label'], transform=transform)
