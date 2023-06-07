@@ -10,7 +10,7 @@ LaTeX is one of the most celebrated package of choice for writing rich textual d
 The goal of this project is to build an end-to-end ML application that converts handwritten documents to LaTeX. The application will be fully contained, the user can download the application on their local machine, build the docker image, and spin up the web container. The instructions to run the app will be provided. I will also have an app demo running for as long as it is economical. 
 
 ## Datasets
-I will be using CROHME Dataset. The details of how the dataset is organized and created is provided in [literature review](notes/paper_reviews.md).
+I will be using CROHME Dataset. The details of how the dataset is organized and created is provided in [literature review](notes/data_review.md).
 The data is downloaded and stored locally in the data directory as per the following diagram:
 ![](assets/data_directory.jpg)
 ## Practical Applications

@@ -60,8 +60,9 @@ def generate_image(inkml_file, img_loc, img_size=IMG_SIZE, line_width=2, export_
         for trace in root.findall('{http://www.w3.org/2003/InkML}trace'):
             points = trace.text.strip().split(',')
             traces.append([(float(pt.split()[0]), float(pt.split()[1])) for pt in points])
-    except:
+    except Exception as e:
         print("Error while parsing the file: {}".format(inkml_file))
+        print(e)
         return
 
     try:
@@ -159,6 +160,6 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
 
 # Main Function
 if __name__ == '__main__':
-    # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")

@@ -14,6 +14,7 @@ mkdir -p  data/CROHME/train/IMG_RENDERED
 mkdir -p  data/CROHME/train/IMG_LABELS
 mkdir -p  data/CROHME/train/SYNTHETIC
 mkdir -p data/CROHME/train/SYNTHETIC_IMG_RENDERED
+mkdir -p dataa/CROHME/train/IMG_RND_LABELS
 mkdir -p data/CROHME/val/IMG
 mkdir -p  data/CROHME/val/IMG_RENDERED
 mkdir -p  data/CROHME/val/INKML
