@@ -4,7 +4,7 @@ from skimage.io import imsave
 import pandas as pd
 import os, re
 import xml.etree.ElementTree as ET
-from pylatexenc.latexwalker import LatexWalker, LatexCharsNode, LatexMacroNode
+from pylatexenc.latexwalker import LatexWalker, LatexCharsNode, LatexMacroNode, LatexGroupNode
 from tqdm import tqdm
 
 from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
@@ -150,6 +150,7 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
     # Export the dataframe to csv
     df.to_csv(csv_loc, index=False)
 
+
 def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
     '''
     :param tex_symbol_source: location of the tex symbols source file -
@@ -158,9 +159,6 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
     :return:
     '''
 
-    # Read the tex symbols source file
-    df = pd.read_csv(tex_symbol_source)
-    tokens = set()
     def create_tokens(row):
         '''
         :param row: row of the dataframe
@@ -173,16 +171,37 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
             walker = LatexWalker(latex_symbol)
             nodes = walker.get_latex_nodes()
             for node in nodes[0]:
-                if node.nodeType() == LatexMacroNode:
-                    token = '\\' + node.macroname
-                    tokens.add(token)
+                visit_node(node)
+                # if node.nodeType() == LatexMacroNode:
+                #     token = '\\' + node.macroname
+                #     tokens.add(token)
+                #
+                # if node.nodeType() == LatexGroupNode:
+                #     print(node)
+                # count[node.nodeType()] += 1
         except:
             print("Error parsing the following latex string: ", row['image_loc'], latex_symbol)
-        # print(nodes, latex_symbol)
 
+    def visit_node(node):
+        if node.nodeType() == LatexMacroNode:
+            token = '\\' + node.macroname
+            tokens.add(token)
+        if node.nodeType() == LatexGroupNode:
+            for node_child in node.nodelist:
+                visit_node(node_child)
+
+    # Read the tex symbols source file
+    df = pd.read_csv(tex_symbol_source)
+    tokens = set()
     df.apply(create_tokens, axis=1)
 
-    # print(tokens)
+    # Export the tokens to csv
+    with open(tex_symbol_dest, 'w') as f:
+        tokens = list(tokens)
+        tokens.sort()
+        for token in tokens:
+            f.write(token + '\n')
+
 
 
 
