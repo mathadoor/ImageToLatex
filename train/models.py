@@ -55,7 +55,7 @@ class VanillaWAP(nn.Module):
 
     def generate_positional_encoder(self):
         '''
-        Adds positional encodings to the
+        Generate 2-D Positional Encoding as per https://arxiv.org/pdf/1908.11415.pdf
         :return:
         '''
         x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1])

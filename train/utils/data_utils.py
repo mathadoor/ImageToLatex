@@ -4,14 +4,10 @@ from skimage.io import imsave
 import pandas as pd
 import os, re
 import xml.etree.ElementTree as ET
+from pylatexenc.latexwalker import LatexWalker, LatexCharsNode, LatexMacroNode
 from tqdm import tqdm
 
 from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
-
-# GLOBAL VARIABLES
-# GET CROHME DATASET PATH
-
-# DATASET LOCATIONS
 
 def get_path(kind):
     '''
@@ -154,8 +150,46 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
     # Export the dataframe to csv
     df.to_csv(csv_loc, index=False)
 
+def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
+    '''
+    :param tex_symbol_source: location of the tex symbols source file -
+    Saved from https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols#cite_note-1
+    :param tex_symbol_dest: location of the tex symbol destination
+    :return:
+    '''
+
+    # Read the tex symbols source file
+    df = pd.read_csv(tex_symbol_source)
+    tokens = set()
+    def create_tokens(row):
+        '''
+        :param row: row of the dataframe
+        :return: tokens
+        '''
+        # Get the latex symbol
+        latex_symbol = row['label']
+        # Get the latex symbol in the form of tokens
+        try:
+            walker = LatexWalker(latex_symbol)
+            nodes = walker.get_latex_nodes()
+            for node in nodes[0]:
+                if node.nodeType() == LatexMacroNode:
+                    token = '\\' + node.macroname
+                    tokens.add(token)
+        except:
+            print("Error parsing the following latex string: ", row['image_loc'], latex_symbol)
+        # print(nodes, latex_symbol)
+
+    df.apply(create_tokens, axis=1)
+
+    # print(tokens)
+
+
+
+
 # Main Function
 if __name__ == '__main__':
-    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
-    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
+    # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    # generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
+    generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")

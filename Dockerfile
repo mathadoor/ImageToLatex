@@ -8,6 +8,10 @@ ENV PATH="$HOME/.local/bin:${PATH}"
 
 WORKDIR $HOME/ImageToLatex
 
+# Install torch and torchvision first
+RUN /usr/local/bin/python -m pip install --upgrade pip && \
+    pip install --no-cache-dir torch torchvision
+
 COPY requirements.txt .
 RUN /usr/local/bin/python -m pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
