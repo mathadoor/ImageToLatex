@@ -1,11 +1,10 @@
 from utils.datasets import ImageDataset
-from utils.global_params import CROHME_TRAIN, CNN_INPUT_DIM, BASE_CONFIG, TR_IMAGE_SIZE
+from utils.global_params import CROHME_TRAIN, CNN_INPUT_DIM, BASE_CONFIG, TR_IMAGE_SIZE, BATCH_SIZE
 from torch.utils.data import DataLoader
 from models import VanillaWAP
 import torchvision.transforms as transforms
 import pandas as pd
 
-BATCH_SIZE = 32
 train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')
 
 # Define your transforms
@@ -23,3 +22,5 @@ model = VanillaWAP(BASE_CONFIG)
 for x, y in dataloader:
     print(model(x).shape)
     break
+
+print(BASE_CONFIG['output_dim'])

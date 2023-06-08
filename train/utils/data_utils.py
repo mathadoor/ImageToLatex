@@ -6,7 +6,7 @@ import os, re
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 
-from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, IMG_SIZE
+from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
 
 # GLOBAL VARIABLES
 # GET CROHME DATASET PATH
@@ -26,7 +26,7 @@ def get_path(kind):
         raise Exception("Invalid kind. Choose between train and val.")
 
 # GENERATE IMAGES
-def generate_image(inkml_file, img_loc, img_size=IMG_SIZE, line_width=2, export_label=False, label_loc=None):
+def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
     '''
     :param inkml_file: contains the stroke data as traces and the ground truth as annotation.
     :param img_loc: location of the image files
@@ -99,7 +99,7 @@ def generate_image(inkml_file, img_loc, img_size=IMG_SIZE, line_width=2, export_
         print("Error while generating the image: {}".format(inkml_file))
         return
 
-def generate_images(inkml_loc, img_loc, img_size=IMG_SIZE, line_width=2, export_label=False, label_loc=None):
+def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
     '''
     :param inkml_loc: location of the INKML files
     :param img_loc: location of the image files

@@ -1,4 +1,5 @@
 # Define the model architectures here
+import torch
 from torch import nn
 
 class VanillaWAP(nn.Module):
@@ -20,7 +21,7 @@ class VanillaWAP(nn.Module):
         x = self.watcher(x)
 
         # Positional Encoding
-        # x = x + self.positional_encoder(x)
+        x = x + self.positional_encoder
 
         # RNN Decoder
         # x = self.parser(x)
@@ -57,7 +58,24 @@ class VanillaWAP(nn.Module):
         Adds positional encodings to the
         :return:
         '''
-        pass
+        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1])
+        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(self.config['num_features_map'][-1] // 4)
+        D = self.config['num_features_map'][-1]
+
+        pe = torch.zeros((D, self.config['output_dim'][0], self.config['output_dim'][1]))
+
+        x_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * i / D), x, torch.ones_like(y))
+        y_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * j / D), torch.ones_like(x), y)
+
+        x, y = x.unsqueeze(1), y.unsqueeze(0)
+        i, j = i.unsqueeze(-1).unsqueeze(-1), j.unsqueeze(-1).unsqueeze(-1)
+
+        pe[2 * i, x, y]              = torch.sin(x_i)
+        pe[2 * i + 1, x, y]          = torch.cos(x_i)
+        pe[2 * j + D // 2, x, y]     = torch.sin(y_i)
+        pe[2 * j + 1 + D // 2, x, y] = torch.cos(y_i)
+
+        self.positional_encoder = pe
 
     def generate_tokenizer(self):
         '''
