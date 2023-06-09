@@ -172,23 +172,25 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
             nodes = walker.get_latex_nodes()
             for node in nodes[0]:
                 visit_node(node)
-                # if node.nodeType() == LatexMacroNode:
-                #     token = '\\' + node.macroname
-                #     tokens.add(token)
-                #
-                # if node.nodeType() == LatexGroupNode:
-                #     print(node)
-                # count[node.nodeType()] += 1
         except:
             print("Error parsing the following latex string: ", row['image_loc'], latex_symbol)
 
     def visit_node(node):
         if node.nodeType() == LatexMacroNode:
             token = '\\' + node.macroname
+            if re.findall("gt\w", node.macroname) or re.findall("lt\w", node.macroname):
+                token = '\\' + node.macroname[0:2]
             tokens.add(token)
+
         if node.nodeType() == LatexGroupNode:
             for node_child in node.nodelist:
                 visit_node(node_child)
+
+        if node.nodeType() == LatexCharsNode:
+            for char in node.chars:
+                if char == '\t' or char == ' ':
+                    continue
+                tokens.add(char)
 
     # Read the tex symbols source file
     df = pd.read_csv(tex_symbol_source)
@@ -201,9 +203,6 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
         tokens.sort()
         for token in tokens:
             f.write(token + '\n')
-
-
-
 
 
 # Main Function
