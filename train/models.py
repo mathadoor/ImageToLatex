@@ -6,14 +6,14 @@ class VanillaWAP(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.watcher = None
-        self.tokenizer = None
+        self.embedder = None
         self.positional_encoder = None
         self.parser = None
         self.config = config
 
         self.generate_watcher()
-        self.generate_tokenizer()
         self.generate_positional_encoder()
+        self.generate_embedder()
         self.generate_parser()
 
     def forward(self, x):
@@ -28,10 +28,10 @@ class VanillaWAP(nn.Module):
 
         return x
     def generate_watcher(self):
-        '''
+        """
         Generate the model based on the config
         :return: None
-        '''
+        """
         self.watcher = nn.Sequential()
         layer_dims = [self.config['input_channels']] + self.config['num_features_map']
         for i in range(self.config['num_layers']):
@@ -54,10 +54,10 @@ class VanillaWAP(nn.Module):
         self.watcher.to(self.config['DEVICE'])
 
     def generate_positional_encoder(self):
-        '''
+        """
         Generate 2-D Positional Encoding as per https://arxiv.org/pdf/1908.11415.pdf
         :return:
-        '''
+        """
         x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1])
         i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(self.config['num_features_map'][-1] // 4)
         D = self.config['num_features_map'][-1]
@@ -77,18 +77,18 @@ class VanillaWAP(nn.Module):
 
         self.positional_encoder = pe
 
-    def generate_tokenizer(self):
-        '''
-        Generates the tokenizer
+    def generate_embedder(self):
+        """
+        Generates the embedder
         :return:
-        '''
-        pass
+        """
+        self.embedder = nn.Embedding(self.config['vocab_size'], self.config['embedding_dim'], padding_idx=0)
 
     def generate_parser(self):
-        '''
+        """
         Generates the parser
         :return:
-        '''
+        """
         pass
 
     def predict(self):

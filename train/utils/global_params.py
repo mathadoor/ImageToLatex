@@ -15,6 +15,10 @@ TR_IMAGE_SIZE = 32
 # CNN input dimension
 CNN_INPUT_DIM = [32, 32]
 
+# Compute VOCAB SIZE
+with open(VOCAB_LOC, 'r') as f:
+    VOCAB_SIZE = len(f.readlines())
+
 # Base Model Parameters
 BASE_CONFIG = {
     'num_layers': 6,
@@ -28,6 +32,8 @@ BASE_CONFIG = {
     'feature_pooling_stride': [(2, 2), (2, 2), None, (1, 2), (2, 1), None],
     'batch_norm':[False, False, True, False, True, True],
     'DEVICE': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    'vocab_size': VOCAB_SIZE,
+    'embedding_dim': 16,
 }
 
 BASE_CONFIG['output_dim'] = BASE_CONFIG['input_dim']
