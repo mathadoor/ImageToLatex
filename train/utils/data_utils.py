@@ -210,9 +210,7 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
             f.write(token + '\n')
 
 # Preprocess the data after extracting the labels. Add space between each vocab element
-def preprocess_data(csv_loc, vocab_loc):
-    # Get vocabulary from the vocab file
-    vocabulary = get_vocabulary(vocab_loc)
+def preprocess_data(csv_loc):
 
     # Read the csv file
     df = pd.read_csv(csv_loc)
@@ -243,19 +241,7 @@ def preprocess_data(csv_loc, vocab_loc):
     df.to_csv(csv_loc, index=False)
 
 # Get Vocabulary
-def get_vocabulary(csv_loc):
-    """
-    :param csv_loc: location of the csv file
-    :return:
-    """
-    # Read the csv file
-    with open(csv_loc, 'r') as f:
-        vocabulary = f.read().split('\n')
 
-    vocabulary.sort()
-    vocabulary = ['<PAD>', '<UNK>', '<SOS>', '<EOS>'] + vocabulary
-
-    return vocabulary
 
 # Main Function
 if __name__ == '__main__':
@@ -263,4 +249,4 @@ if __name__ == '__main__':
     #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
-    preprocess_data(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
+    preprocess_data(CROHME_TRAIN + "/train.csv")

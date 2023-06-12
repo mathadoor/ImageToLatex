@@ -6,6 +6,7 @@ CROHME_PATH = re.findall('(.+/ImageToLatex).*', CROHME_PATH)[0]
 CROHME_PATH = os.path.join(CROHME_PATH, 'data/CROHME')
 CROHME_TRAIN = os.path.join(CROHME_PATH, 'train')
 CROHME_VAL = os.path.join(CROHME_PATH, 'val')
+VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
 
 # Image size Original (OG) vs Transformed (TR)
 OG_IMG_SIZE = (512, 512)
