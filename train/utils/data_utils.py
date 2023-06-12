@@ -155,7 +155,7 @@ def visit_node(node):
     ret = []
     if node.nodeType() == LatexMacroNode:
         token = '\\' + node.macroname
-        if re.findall("gt\w", node.macroname) or re.findall("lt\w", node.macroname):
+        if re.findall("^gt\w", node.macroname) or re.findall("^lt\w", node.macroname):
             token = '\\' + node.macroname[0:2]
         ret.append(token)
 
@@ -261,6 +261,6 @@ def get_vocabulary(csv_loc):
 if __name__ == '__main__':
     # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
     #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
-    # generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
-    # generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
+    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
+    generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
