@@ -8,7 +8,7 @@ class VanillaWAP(nn.Module):
         self.watcher = None
         self.embedder = None
         self.positional_encoder = None
-        self.parser = None
+        self.parser = dict()
         self.config = config
 
         self.generate_watcher()
@@ -89,6 +89,16 @@ class VanillaWAP(nn.Module):
         Generates the parser
         :return:
         """
+        lstm_forward_level_1 = nn.LSTM(self.config['embedding_dim'], self.config['hidden_dim'], batch_first=True)
+        lstm_reverse_level_1 = nn.LSTM(self.config['embedding_dim'], self.config['hidden_dim'], batch_first=True)
+        lstm_forward_level_2 = nn.LSTM(self.config['hidden_dim'], self.config['hidden_dim'], batch_first=True)
+        lstm_reverse_level_2 = nn.LSTM(self.config['hidden_dim'], self.config['hidden_dim'], batch_first=True)
+
+        self.parser['forward_level_1'] = lstm_forward_level_1
+        self.parser['reverse_level_1'] = lstm_reverse_level_1
+        self.parser['forward_level_2'] = lstm_forward_level_2
+        self.parser['reverse_level_2'] = lstm_reverse_level_2
+
         pass
 
     def predict(self):
