@@ -10,10 +10,10 @@ from tqdm import tqdm
 from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
 
 def get_path(kind):
-    '''
+    """
     :param kind: train or val
     :return: path to the dataset
-    '''
+    """
     if kind == 'train':
         return CROHME_TRAIN
     elif kind == 'val':
@@ -23,7 +23,7 @@ def get_path(kind):
 
 # GENERATE IMAGES
 def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
-    '''
+    """
     :param inkml_file: contains the stroke data as traces and the ground truth as annotation.
     :param img_loc: location of the image files
     :param img_size: size of the output image
@@ -31,7 +31,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
     :param export_label: whether to export the label or not
     :param label_loc: location of the label files
     :return: the image of the equation
-    '''
+    """
     # Parse the XML file
     try:
         tree = ET.parse(inkml_file)
@@ -43,7 +43,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
                 # if the attribute is truth, then export the label
                 if annotation.attrib['type'] == 'truth':
                     # Some labels have $ in the beginning and end. Remove them.
-                    label = re.findall('\$?([^\$]+)\$?', annotation.text)[0].strip()
+                    label = re.findall('\$*([^\$]+)\$*?', annotation.text)[0].strip()
                     with open(label_loc + inkml_file.split('/')[-1].split('.')[0] + '.txt', 'w') as f:
                         f.write(label)
 
@@ -96,7 +96,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         return
 
 def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
-    '''
+    """
     :param inkml_loc: location of the INKML files
     :param img_loc: location of the image files
     :param img_size: size of the output image
@@ -104,7 +104,7 @@ def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
     :param export_label: whether to export the label or not
     :param label_loc: location of the label files
     :return: None
-    '''
+    """
     # Get all the INKML files
     inkml_files = os.listdir(inkml_loc)
 
@@ -122,12 +122,12 @@ def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         # if i == 10:
         #     break
 def generate_annotated_csv(img_loc, label_loc, csv_loc):
-    '''
+    """
     :param img_loc: location of the image files
     :param label_loc: location of the label files
     :param csv_loc: location of the csv file
     :return: None
-    '''
+    """
     # Get all the image files
     img_files = os.listdir(img_loc)
 
@@ -151,14 +151,35 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
     df.to_csv(csv_loc, index=False)
 
 
+def visit_node(node):
+    ret = []
+    if node.nodeType() == LatexMacroNode:
+        token = '\\' + node.macroname
+        if re.findall("gt\w", node.macroname) or re.findall("lt\w", node.macroname):
+            token = '\\' + node.macroname[0:2]
+        ret.append(token)
+
+    if node.nodeType() == LatexGroupNode:
+        for node_child in node.nodelist:
+            visit_node(node_child)
+
+    if node.nodeType() == LatexCharsNode:
+        for char in node.chars:
+            if char == '\t' or char == ' ':
+                continue
+            ret.append(char)
+
+    return ret
+
 def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
-    '''
+    """
     :param tex_symbol_source: location of the tex symbols source file -
     Saved from https://oeis.org/wiki/List_of_LaTeX_mathematical_symbols#cite_note-1
     :param tex_symbol_dest: location of the tex symbol destination
     :return:
-    '''
-
+    """
+    df = pd.read_csv(tex_symbol_source)
+    tokens = set()
     def create_tokens(row):
         '''
         :param row: row of the dataframe
@@ -171,31 +192,15 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
             walker = LatexWalker(latex_symbol)
             nodes = walker.get_latex_nodes()
             for node in nodes[0]:
-                visit_node(node)
+                ret = visit_node(node)
+                for token_ in ret:
+                    tokens.add(token_)
         except:
             print("Error parsing the following latex string: ", row['image_loc'], latex_symbol)
 
-    def visit_node(node):
-        if node.nodeType() == LatexMacroNode:
-            token = '\\' + node.macroname
-            if re.findall("gt\w", node.macroname) or re.findall("lt\w", node.macroname):
-                token = '\\' + node.macroname[0:2]
-            tokens.add(token)
-
-        if node.nodeType() == LatexGroupNode:
-            for node_child in node.nodelist:
-                visit_node(node_child)
-
-        if node.nodeType() == LatexCharsNode:
-            for char in node.chars:
-                if char == '\t' or char == ' ':
-                    continue
-                tokens.add(char)
-
     # Read the tex symbols source file
-    df = pd.read_csv(tex_symbol_source)
-    tokens = set()
     df.apply(create_tokens, axis=1)
+
 
     # Export the tokens to csv
     with open(tex_symbol_dest, 'w') as f:
@@ -204,10 +209,58 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
         for token in tokens:
             f.write(token + '\n')
 
+# Preprocess the data after extracting the labels. Add space between each vocab element
+def preprocess_data(csv_loc, vocab_loc):
+    # Get vocabulary from the vocab file
+    vocabulary = get_vocabulary(vocab_loc)
+
+    # Read the csv file
+    df = pd.read_csv(csv_loc)
+
+    # Preprocess the data
+    def preprocess(row):
+        # Get the label
+        label = row['label']
+
+        # Add space between each vocab element
+        latex_walker = LatexWalker(label)
+        nodes = latex_walker.get_latex_nodes()
+        # Get the latex nodes
+        tokens = []
+        for node in nodes[0]:
+            tokens += visit_node(node)
+
+        # Join the tokens and add space between each vocab element
+        tokens = [token + ' ' for token in tokens]
+        row['label'] = ''.join(tokens)[:-1]
+
+        return row
+
+    # Apply the preprocessing
+    df = df.apply(preprocess, axis=1)
+
+    # Export the dataframe to csv
+    df.to_csv(csv_loc, index=False)
+
+# Get Vocabulary
+def get_vocabulary(csv_loc):
+    """
+    :param csv_loc: location of the csv file
+    :return:
+    """
+    # Read the csv file
+    with open(csv_loc, 'r') as f:
+        vocabulary = f.read().split('\n')
+
+    vocabulary.sort()
+    vocabulary = ['<PAD>', '<UNK>', '<SOS>', '<EOS>'] + vocabulary
+
+    return vocabulary
 
 # Main Function
 if __name__ == '__main__':
     # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
     #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     # generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
-    generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
+    # generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
+    preprocess_data(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")

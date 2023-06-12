@@ -2,10 +2,13 @@ from torch.utils.data import Dataset
 from PIL import Image
 
 class ImageDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None):
+    def __init__(self, image_paths, labels, vocab, transform=None):
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
+        self.vocab = vocab
+        self.word_to_index = {word: i for i, word in enumerate(self.vocab)}
+        self.index_to_word = {i: word for i, word in enumerate(self.vocab)}
 
     def __getitem__(self, index):
         # load image as ndarray type (H x W x C) in grey scale format
@@ -19,4 +22,5 @@ class ImageDataset(Dataset):
 
     def __len__(self):
         return len(self.image_paths)
+
 
