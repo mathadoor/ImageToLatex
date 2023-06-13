@@ -25,9 +25,23 @@ class VanillaWAP(nn.Module):
         x = torch.reshape(x, (x.shape[0], x.shape[1], 1, -1))
         # RNN Decoder
 
-        self.parse(x)
+        y = 2 * torch.ones((x.shape[0], 1)).long()
+        p = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] ))
 
-        return x
+        i = 0
+        # While all y are not index = 3 and max length is not reached
+        o_t, c_t, h_t = None, None, None
+        while not torch.all(y == 3) and i < self.config['max_len']:
+
+            # Embedding
+            p_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
+            p[:, i, :] = p_t.squeeze()
+            y = torch.argmax(p_t.squeeze(), dim=1)
+
+            # Next Iter
+            i += 1
+
+        return p
     def generate_watcher(self):
         """
         Generate the model based on the config
@@ -97,15 +111,9 @@ class VanillaWAP(nn.Module):
         Generates the parser
         :return:
         """
-        lstm_forward_level_1 = nn.LSTM(self.config['embedding_dim'], self.config['hidden_dim'], batch_first=True)
-        lstm_reverse_level_1 = nn.LSTM(self.config['embedding_dim'], self.config['hidden_dim'], batch_first=True)
-        lstm_forward_level_2 = nn.LSTM(self.config['hidden_dim'], self.config['hidden_dim'], batch_first=True)
-        lstm_reverse_level_2 = nn.LSTM(self.config['hidden_dim'], self.config['hidden_dim'], batch_first=True)
 
-        self.parser['forward_level_1'] = lstm_forward_level_1
-        self.parser['reverse_level_1'] = lstm_reverse_level_1
-        self.parser['forward_level_2'] = lstm_forward_level_2
-        self.parser['reverse_level_2'] = lstm_reverse_level_2
+        self.parser['lstm'] = nn.LSTM(self.config['embedding_dim'] + self.config['hidden_dim'],
+                                       self.config['hidden_dim'], batch_first=True)
 
         # Define linear layers to compute the initial hidden and cell states of the forward and reverse LSTMs
         D = self.config['num_features_map'][-1]
@@ -114,22 +122,50 @@ class VanillaWAP(nn.Module):
 
         # Define linear layers to project the hidden state and memory vector to get the attention weights
         L = self.config['output_dim'][0] * self.config['output_dim'][1]
-        self.parser['W_1'] = nn.Linear(self.config['hidden_dim'], D)
-        self.parser['W_2'] = nn.Linear(L, 1)
+        self.parser['W_1'] = nn.Linear(self.config['hidden_dim'], L)
+        self.parser['W_2'] = nn.Linear(D, 1)
 
-    def parse(self, x):
-        # x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
+        # Define Linear Layer to combine Hidden State and Context
+        self.parser['W_3'] = nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False)
+
+        # Define Linear Layer to Project the Cell State to the Output Vocabulary
+        self.parser['W_4'] = nn.Linear(self.config['cell_dim'], self.config['vocab_size'], bias=False)
+
+    def parse(self, x, y, h_t_1=None, c_t_1=None, o_t_1=None):
+        """
+        x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
+        y is of shape (batch_size, vocab) - (B, V)
+        h_t_1 is of shape (batch_size, hidden_dim) - (B, H)
+        c_t_1 is of shape (batch_size, cell_dim) - (B, C)
+        o_t_1 is of shape (batch_size, hidden_dim) - (B, H)
+        """
 
         # Compute the initial hidden and cell states of the forward and reverse LSTMs
-        c_t_1 = torch.tanh(self.parser['W_c'](torch.mean(x, dim=-1).squeeze()))
-        h_t_1 = torch.tanh(self.parser['W_h'](torch.mean(x, dim=-1).squeeze()))
+        if h_t_1 is None:
+            h_t_1 = torch.tanh(self.parser['W_h'](torch.mean(x, dim=-1).squeeze())).unsqueeze(0)
+            c_t_1 = torch.tanh(self.parser['W_c'](torch.mean(x, dim=-1).squeeze())).unsqueeze(0)
+            o_t_1 = torch.zeros((x.shape[0], self.config['hidden_dim'])).to(self.config['DEVICE'])
+
+        w_t_1 = self.embedder(y).squeeze()
+
+        # Compute the hidden and cell states of the forward and reverse LSTMs
+        input_t_1 = torch.concat([w_t_1, o_t_1], dim=-1).unsqueeze(1)
+        _, (h_t, c_t) = self.parser['lstm'](input_t_1, (h_t_1, c_t_1))
 
         # Compute the attention weights
-        a_t = torch.tanh(self.parser['W_1'](h_t_1) + self.parser['W_2'](x).squeeze())
+        input_t_11 = self.parser['W_1'](h_t)
+        input_t_12 = self.parser['W_2'](x.view(x.shape[0], x.shape[3], x.shape[2], x.shape[1])).squeeze()
+        a_t = torch.tanh( input_t_11 + input_t_12)
         alpha_t = torch.softmax(a_t, dim=-1)
 
         # Compute the context vector
-        ctx_t = torch.einsum("ijkl, ij -> ij", x, alpha_t)
+        ctx_t = torch.einsum("ijkl, kil -> kij", x, alpha_t)
+        o_t = torch.tanh(self.parser['W_3'](torch.concat([h_t, ctx_t], dim=-1))).squeeze()
+
+        # Compute the output vector
+        p_t = torch.softmax(self.parser['W_4'](o_t), dim=-1)
+
+        return p_t, h_t, c_t, o_t
 
     def predict(self):
         pass
