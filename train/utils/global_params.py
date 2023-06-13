@@ -32,6 +32,8 @@ BASE_CONFIG = {
     'feature_pooling_stride': [(2, 2), (2, 2), None, (1, 2), (2, 1), None],
     'batch_norm':[False, False, True, False, True, True],
     'DEVICE': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    'hidden_dim': 256,
+    'cell_dim': 256,
     'vocab_size': VOCAB_SIZE,
     'embedding_dim': 16,
 }
