@@ -36,6 +36,7 @@ BASE_CONFIG = {
     'cell_dim': 256,
     'vocab_size': VOCAB_SIZE,
     'embedding_dim': 16,
+    'max_len': 100,
 }
 
 BASE_CONFIG['output_dim'] = BASE_CONFIG['input_dim']
