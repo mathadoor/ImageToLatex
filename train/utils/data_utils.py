@@ -165,7 +165,7 @@ def visit_node(node):
 
     if node.nodeType() == LatexCharsNode:
         for char in node.chars:
-            if char == '\t' or char == ' ':
+            if char == '\t' or char == ' ' or char == '':
                 continue
             ret.append(char)
 
@@ -201,14 +201,13 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
     # Read the tex symbols source file
     df.apply(create_tokens, axis=1)
 
-
     # Export the tokens to csv
     with open(tex_symbol_dest, 'w') as f:
         tokens = list(tokens)
         tokens.sort()
-        for token in tokens:
-            f.write(token + '\n')
-
+        f.write(tokens[0])
+        for token in tokens[1:]:
+            f.write('\n' + token)
 # Preprocess the data after extracting the labels. Add space between each vocab element
 def preprocess_data(csv_loc):
 
