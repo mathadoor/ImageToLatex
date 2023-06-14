@@ -19,7 +19,10 @@ CNN_INPUT_DIM = [32, 32]
 with open(VOCAB_LOC, 'r') as f:
     VOCAB_SIZE = len(f.readlines())
 
-# Base Model Parameters
+# Training Parameters
+BATCH_SIZE = 32
+
+# Base CONFIG
 BASE_CONFIG = {
     'num_layers': 6,
     'input_dim': CNN_INPUT_DIM,
@@ -34,9 +37,26 @@ BASE_CONFIG = {
     'DEVICE': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     'hidden_dim': 256,
     'cell_dim': 256,
-    'vocab_size': VOCAB_SIZE,
+    'vocab_size': VOCAB_SIZE + 4,
     'embedding_dim': 16,
     'max_len': 100,
+    'train_params': {
+        'lr': 1e-3,
+        'epochs': 100,
+        'lr_decay': 0.5,
+        'lr_decay_step': 10,
+        'clip': 5,
+        'print_every': 100,
+        'save_every': 10,
+        'save_loc': './checkpoints/',
+        'load_loc': None,
+        'load': False,
+        'load_epoch': 0,
+        'load_step': 0,
+        'load_best': False,
+        'load_best_epoch': 0,
+        'batch_size': BATCH_SIZE,
+    }
 }
 
 BASE_CONFIG['output_dim'] = BASE_CONFIG['input_dim']
@@ -54,6 +74,3 @@ for i in range(BASE_CONFIG['num_layers']):
 
     BASE_CONFIG['output_dim'] = dim
 
-
-# Training Parameters
-BATCH_SIZE = 32

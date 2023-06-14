@@ -1,6 +1,7 @@
 from utils.datasets import ImageDataset, collate_fn
-from utils.global_params import CNN_INPUT_DIM, BASE_CONFIG, TR_IMAGE_SIZE, BATCH_SIZE, CROHME_TRAIN, VOCAB_LOC
+from utils.global_params import BASE_CONFIG, TR_IMAGE_SIZE, BATCH_SIZE, CROHME_TRAIN, VOCAB_LOC
 from torch.utils.data import DataLoader
+import torch
 from models import VanillaWAP
 import torchvision.transforms as transforms
 import pandas as pd
@@ -19,7 +20,15 @@ dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn
 model = VanillaWAP(BASE_CONFIG)
 # Iterate through DataLoader
 for x, y in dataloader:
-    print(model(x).shape, y.shape)
-    break
+    # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
+    # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
+    max_len = y.shape[1]
+    p = model(x)[:,:max_len,:] # (B, L, V)
 
-print(BASE_CONFIG['output_dim'])
+    # One hot encode y
+    y = torch.nn.functional.one_hot(y, model.config['vocab_size']).float()
+
+    # Compute Loss as cross entropy
+    loss = torch.nn.functional.cross_entropy(p, y)
+    print(loss)
+    break
