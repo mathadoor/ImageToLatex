@@ -1,7 +1,7 @@
 # Define the model architectures here
 import torch
 from torch import nn
-
+import os
 class VanillaWAP(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -170,8 +170,16 @@ class VanillaWAP(nn.Module):
     def predict(self):
         pass
 
-    def save(self):
-        pass
+    def save(self, iteration):
+        """
+        Saves the model every self.config.train_params['save_every'] iterations in the directory specified by
+        'save_loc' key in the config file
+        :param iteration:
+        :return:
+        """
+        if iteration % self.config['train_params']['save_every'] == 0:
+            torch.save(self.state_dict(), os.path.join(self.config['train_params']['save_loc'],
+                                                       'model_{}.pth'.format(iteration)))
 
     def load(self):
         pass

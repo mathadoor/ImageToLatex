@@ -47,7 +47,7 @@ BASE_CONFIG = {
         'lr_decay_step': 10,
         'clip': 5,
         'print_every': 100,
-        'save_every': 10,
+        'save_every': 100000,
         'save_loc': './checkpoints/',
         'load_loc': None,
         'load': False,
