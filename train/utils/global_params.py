@@ -39,6 +39,9 @@ BASE_CONFIG = {
     'cell_dim': 128,
     'vocab_size': VOCAB_SIZE + 4,
     'embedding_dim': 16,
+    'LSTM_bidirectional': False,
+    'LSTM_num_layers': 1,
+    'dropout': 0.2,
     'max_len': 100,
     'train_params': {
         'random_seed': 42,

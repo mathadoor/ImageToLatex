@@ -123,7 +123,10 @@ class VanillaWAP(nn.Module):
         self.parser = nn.ModuleDict({
             # LSTM Layers
             'lstm' : nn.LSTM(self.config['embedding_dim'] + self.config['hidden_dim'],
-                                       self.config['hidden_dim'], batch_first=True).to(self.config['DEVICE']),
+                            self.config['hidden_dim'], batch_first=True,
+                            num_layers=self.config['LSTM_num_layers'],
+                            dropout=self.config['dropout'],
+                            bidirectional=self.config['LSTM_bidirectional']).to(self.config['DEVICE']),
 
             # Define linear layers to compute the initial hidden and cell states of the forward and reverse LSTMs
             'W_h' : nn.Linear(D, self.config['hidden_dim']).to(self.config['DEVICE']),
@@ -131,7 +134,8 @@ class VanillaWAP(nn.Module):
 
             # Define linear layers to project the hidden state and memory vector to get the attention weights
             'W_1' : nn.Linear(self.config['hidden_dim'], L).to(self.config['DEVICE']),
-            'W_2' : nn.Linear(D, 1).to(self.config['DEVICE']),
+            'W_2' : nn.Linear(D, L).to(self.config['DEVICE']),
+            'beta' : nn.Linear(L, 1).to(self.config['DEVICE']),
 
             # Linear Layer to combine Hidden State and Context
             'W_3' : nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False).to(
@@ -164,9 +168,9 @@ class VanillaWAP(nn.Module):
         _, (h_t, c_t) = self.parser['lstm'](input_t_1, (h_t_1, c_t_1))
 
         # Compute the attention weights
-        input_t_11 = self.parser['W_1'](h_t)
+        input_t_11 = self.parser['W_1'](h_t).squeeze().unsqueeze(-1)
         input_t_12 = self.parser['W_2'](x.view(x.shape[0], x.shape[3], x.shape[2], x.shape[1])).squeeze()
-        a_t = torch.tanh( input_t_11 + input_t_12)
+        a_t = self.parser['beta'](torch.tanh(input_t_11 + input_t_12)).squeeze().unsqueeze(0)
         alpha_t = torch.softmax(a_t, dim=-1)
 
         # Compute the context vector
