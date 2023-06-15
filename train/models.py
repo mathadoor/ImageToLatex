@@ -26,7 +26,7 @@ class VanillaWAP(nn.Module):
         # RNN Decoder
 
         y = 2 * torch.ones((x.shape[0], 1)).long()
-        p = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] ))
+        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] ))
 
         i = 0
         # While all y are not index = 3 and max length is not reached
@@ -34,14 +34,15 @@ class VanillaWAP(nn.Module):
         while not torch.all(y == 3) and i < self.config['max_len']:
 
             # Embedding
-            p_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
-            p[:, i, :] = p_t.squeeze()
-            y = torch.argmax(p_t.squeeze(), dim=1)
+            logit_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
+            logit[:, i, :] = logit_t.squeeze()
+            y = torch.argmax(logit_t.squeeze(), dim=1)
 
             # Next Iter
             i += 1
 
-        return p
+        return logit
+
     def generate_watcher(self):
         """
         Generate the model based on the config
@@ -80,11 +81,11 @@ class VanillaWAP(nn.Module):
         Generate 2-D Positional Encoding as per https://arxiv.org/pdf/1908.11415.pdf
         :return:
         """
-        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1])
-        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(self.config['num_features_map'][-1] // 4)
+        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1], requires_grad=False)
+        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(self.config['num_features_map'][-1] // 4, requires_grad=False )
         D = self.config['num_features_map'][-1]
 
-        pe = torch.zeros((D, self.config['output_dim'][0], self.config['output_dim'][1]))
+        pe = torch.zeros((D, self.config['output_dim'][0], self.config['output_dim'][1]), requires_grad=False)
 
         x_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * i / D), x, torch.ones_like(y))
         y_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * j / D), torch.ones_like(x), y)
@@ -112,24 +113,29 @@ class VanillaWAP(nn.Module):
         :return:
         """
 
-        self.parser['lstm'] = nn.LSTM(self.config['embedding_dim'] + self.config['hidden_dim'],
-                                       self.config['hidden_dim'], batch_first=True)
-
-        # Define linear layers to compute the initial hidden and cell states of the forward and reverse LSTMs
         D = self.config['num_features_map'][-1]
-        self.parser['W_h'] = nn.Linear(D, self.config['hidden_dim'])
-        self.parser['W_c'] = nn.Linear(D, self.config['cell_dim'])
-
-        # Define linear layers to project the hidden state and memory vector to get the attention weights
         L = self.config['output_dim'][0] * self.config['output_dim'][1]
-        self.parser['W_1'] = nn.Linear(self.config['hidden_dim'], L)
-        self.parser['W_2'] = nn.Linear(D, 1)
+        self.parser = nn.ModuleDict({
+            # LSTM Layers
+            'lstm' : nn.LSTM(self.config['embedding_dim'] + self.config['hidden_dim'],
+                                       self.config['hidden_dim'], batch_first=True).to(self.config['DEVICE']),
 
-        # Define Linear Layer to combine Hidden State and Context
-        self.parser['W_3'] = nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False)
+            # Define linear layers to compute the initial hidden and cell states of the forward and reverse LSTMs
+            'W_h' : nn.Linear(D, self.config['hidden_dim']).to(self.config['DEVICE']),
+            'W_c' : nn.Linear(D, self.config['cell_dim']).to(self.config['DEVICE']),
 
-        # Define Linear Layer to Project the Cell State to the Output Vocabulary
-        self.parser['W_4'] = nn.Linear(self.config['cell_dim'], self.config['vocab_size'], bias=False)
+            # Define linear layers to project the hidden state and memory vector to get the attention weights
+            'W_1' : nn.Linear(self.config['hidden_dim'], L).to(self.config['DEVICE']),
+            'W_2' : nn.Linear(D, 1).to(self.config['DEVICE']),
+
+            # Linear Layer to combine Hidden State and Context
+            'W_3' : nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False).to(
+            self.config['DEVICE']),
+
+            # Linear Layer to Project the Cell State to the Output Vocabulary
+            'W_4' : nn.Linear(self.config['cell_dim'], self.config['vocab_size'], bias=False).to(self.config['DEVICE'])
+
+        })
 
     def parse(self, x, y, h_t_1=None, c_t_1=None, o_t_1=None):
         """
@@ -163,9 +169,9 @@ class VanillaWAP(nn.Module):
         o_t = torch.tanh(self.parser['W_3'](torch.concat([h_t, ctx_t], dim=-1))).squeeze()
 
         # Compute the output vector
-        p_t = torch.softmax(self.parser['W_4'](o_t), dim=-1)
+        logit_t = self.parser['W_4'](o_t)
 
-        return p_t, h_t, c_t, o_t
+        return logit_t, h_t, c_t, o_t
 
     def predict(self, x):
         pass

@@ -24,7 +24,6 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
-
 # Evaluation Constructs
 wer = WordErrorRate(device=BASE_CONFIG['DEVICE'])
 
@@ -102,13 +101,16 @@ for i in range(train_params['epochs']):
         p = model(x)[:,:max_len,:] # (B, L, V)
 
         # One hot encode y
-        y = torch.nn.functional.one_hot(y, model.config['vocab_size']).float()
+        # y = torch.nn.functional.one_hot(y, model.config['vocab_size']).float()
 
         # Compute Loss as cross entropy
-        loss = torch.nn.functional.cross_entropy(p, y)
+        # loss = torch.nn.functional.cross_entropy(p, y)
+        loss = torch.nn.functional.cross_entropy(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
 
-        # Backpropagation
+
+        # Backpropagation with clipped gradients
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), train_params['clip_grad_norm'])
         optimizer.step()
 
         optimizer.zero_grad()
@@ -124,10 +126,11 @@ for i in range(train_params['epochs']):
         for x, y in dataloader_val:
             # Set model to eval mode
             max_len = y.shape[1]
-            p = model(x)
+            p = model(x)[:,:max_len,:]
 
             # Compute Loss as cross entropy
-            loss = torch.nn.functional.cross_entropy(p[:,:max_len,:], torch.nn.functional.one_hot(y, model.config['vocab_size']).float())
+            loss = torch.nn.functional.cross_entropy(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
+            # loss = torch.nn.functional.cross_entropy(p[:,:max_len,:], torch.nn.functional.one_hot(y, model.config['vocab_size']).float())
             val_loss.update(loss.item())
 
             # Computer WER

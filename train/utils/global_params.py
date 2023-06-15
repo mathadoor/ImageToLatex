@@ -42,9 +42,10 @@ BASE_CONFIG = {
     'max_len': 100,
     'train_params': {
         'random_seed': 42,
-        'lr': 0.1,
+        'lr': 0.00005,
         'epochs': 100,
         'lr_decay': 0.5,
+        'clip_grad_norm': 5,
         'lr_decay_step': 10,
         'print_every': 100,
         'save_every': 10,
