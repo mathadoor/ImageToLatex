@@ -167,19 +167,25 @@ class VanillaWAP(nn.Module):
 
         return p_t, h_t, c_t, o_t
 
-    def predict(self):
+    def predict(self, x):
         pass
 
-    def save(self, iteration):
+    def save(self, iteration=None, best=False):
         """
         Saves the model every self.config.train_params['save_every'] iterations in the directory specified by
         'save_loc' key in the config file
         :param iteration:
         :return:
         """
+        if best:
+            save_loc = os.path.join(self.config['root_loc'], self.config['train_params']['save_loc'])
+            torch.save(self.state_dict(), os.path.join(save_loc, 'model_best.pth'))
+            return
+
         if iteration % self.config['train_params']['save_every'] == 0:
             save_loc = os.path.join(self.config['root_loc'], self.config['train_params']['save_loc'])
             torch.save(self.state_dict(), os.path.join(save_loc, 'model_{}.pth'.format(iteration)))
+            return
 
     def load(self):
         pass

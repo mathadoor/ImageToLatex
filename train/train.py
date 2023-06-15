@@ -20,7 +20,7 @@ model = VanillaWAP(BASE_CONFIG)
 
 # Training Constructs
 train_params = BASE_CONFIG['train_params']
-optimizer = torch.optim.Adam(model.parameters(), lr=train_params['lr'])
+optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_decay=1e-5)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
@@ -29,17 +29,20 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
 wer = WordErrorRate(device=BASE_CONFIG['DEVICE'])
 
 # Define dataloader
-genrator = torch.Generator().manual_seed(train_params['random_seed'])
-train, val = random_split(dataset, [0.8, 0.2], generator=genrator)
+generator = torch.Generator().manual_seed(train_params['random_seed'])
+train, val = random_split(dataset, [0.8, 0.2], generator=generator)
 dataloader_train = DataLoader(train, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 dataloader_val = DataLoader(val, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
 # Define AverageMeter
 class AverageMeter:
 
-    def __init__(self):
+    def __init__(self, best=False, best_type='min'):
         self.total = None
         self.count = None
+        if best:
+            self.best = None
+            self.best_type = best_type
         self.reset()
 
     def reset(self):
@@ -52,6 +55,25 @@ class AverageMeter:
 
     def compute(self):
         return self.total / self.count
+
+    def is_best(self):
+        if self.best is None:
+            self.best = self.compute()
+            return True
+        elif self.best_type == 'min':
+            if self.compute() < self.best:
+                self.best = self.compute()
+                return True
+            else:
+                return False
+        elif self.best_type == 'max':
+            if self.compute() > self.best:
+                self.best = self.compute()
+                return True
+            else:
+                return False
+        else:
+            raise ValueError('best_type must be either min or max')
 
 def convert_to_string(tensor, index_to_word):
     """
@@ -70,7 +92,7 @@ def convert_to_string(tensor, index_to_word):
 
 # Setup Training Loop
 train_loss, val_loss = AverageMeter(), AverageMeter()
-
+val_wer = AverageMeter(best=True, best_type='max')
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
     for x, y in tqdm(dataloader_train):
@@ -88,12 +110,13 @@ for i in range(train_params['epochs']):
         # Backpropagation
         loss.backward()
         optimizer.step()
-        scheduler.step()
 
         optimizer.zero_grad()
 
         # Update loss
         train_loss.update(loss.item())
+
+    scheduler.step()
     print(f'\tTraining Loss during epoch {i}: {train_loss.compute()}')
 
     with torch.no_grad():
@@ -112,14 +135,23 @@ for i in range(train_params['epochs']):
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
             y_true = y.detach().cpu().numpy()
             y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
+
+            # Update Val_WER
             wer.update(y_pred, y_true)
-    print(f'\tValidation WER during epoch {i}: {wer.compute()}')
+            val_wer.update(wer.compute())
+            wer.reset()
+
+    print(f'\tValidation WER during epoch {i}: {val_wer.compute()}')
     print(f'\tValidation Loss during epoch {i}: {val_loss.compute()}')
+
+    # Save model if val_wer is best
+    if val_wer.is_best():
+        model.save(best=True)
 
     # Reset AverageMeters
     train_loss.reset()
     val_loss.reset()
-    wer.reset()
+    val_wer.reset()
 
     # Save model
-    model.save(i)
+    model.save(iteration=i)
