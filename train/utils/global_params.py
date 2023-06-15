@@ -55,6 +55,7 @@ BASE_CONFIG = {
         'load_epoch': 0,
         'load_step': 0,
         'load_best': False,
+        'load_iter': 0,
         'load_best_epoch': 0,
         'batch_size': BATCH_SIZE,
     }

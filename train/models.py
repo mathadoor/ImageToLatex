@@ -8,13 +8,18 @@ class VanillaWAP(nn.Module):
         self.watcher = None
         self.embedder = None
         self.positional_encoder = None
-        self.parser = dict()
+        self.parser = None
         self.config = config
+
 
         self.generate_watcher()
         self.generate_positional_encoder()
         self.generate_embedder()
         self.generate_parser()
+
+        # Generate the model based on the config. If load is True, load the model from the path
+        if config['train_params']['load']:
+            self.load()
 
     def forward(self, x):
         # CNN Feature Extraction
@@ -194,4 +199,10 @@ class VanillaWAP(nn.Module):
             return
 
     def load(self):
-        pass
+        # load the model
+        path = os.path.join(self.config['root_loc'], self.config['train_params']['save_loc'])
+        if self.config['train_params']['load_best']:
+            path = os.path.join(path, 'model_best.pth')
+        else:
+            path = os.path.join(path, 'model_{}.pth'.format(self.config['train_params']['load_iter']))
+        self.load_state_dict(torch.load(path))
