@@ -4,3 +4,4 @@ data/
 kaggle.json
 *.$*
 .env
+checkpoints

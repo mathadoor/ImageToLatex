@@ -5,8 +5,6 @@ seaborn
 opencv-python
 scikit-image
 tqdm
-torch
-torchvision
 python-decouple
 pylatexenc
 BeautifulSoup4

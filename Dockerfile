@@ -10,7 +10,7 @@ WORKDIR $HOME/ImageToLatex
 
 # Install torch and torchvision first
 RUN /usr/local/bin/python -m pip install --upgrade pip && \
-    pip install --no-cache-dir torch torchvision
+    pip install --no-cache-dir torch torchvision torchtext torcheval
 
 COPY requirements.txt .
 RUN /usr/local/bin/python -m pip install --upgrade pip && \

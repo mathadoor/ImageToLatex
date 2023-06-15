@@ -178,8 +178,8 @@ class VanillaWAP(nn.Module):
         :return:
         """
         if iteration % self.config['train_params']['save_every'] == 0:
-            torch.save(self.state_dict(), os.path.join(self.config['train_params']['save_loc'],
-                                                       'model_{}.pth'.format(iteration)))
+            save_loc = os.path.join(self.config['root_loc'], self.config['train_params']['save_loc'])
+            torch.save(self.state_dict(), os.path.join(save_loc, 'model_{}.pth'.format(iteration)))
 
     def load(self):
         pass

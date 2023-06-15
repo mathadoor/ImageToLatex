@@ -1,9 +1,8 @@
 import os, re, torch
 
 # Dataset paths
-CROHME_PATH = os.path.abspath(__file__)
-CROHME_PATH = re.findall('(.+/ImageToLatex).*', CROHME_PATH)[0]
-CROHME_PATH = os.path.join(CROHME_PATH, 'data/CROHME')
+ROOT_LOC = re.findall('(.+/ImageToLatex).*', os.path.abspath(__file__))[0]
+CROHME_PATH = os.path.join(ROOT_LOC, 'data/CROHME')
 CROHME_TRAIN = os.path.join(CROHME_PATH, 'train')
 CROHME_VAL = os.path.join(CROHME_PATH, 'val')
 VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
@@ -24,6 +23,7 @@ BATCH_SIZE = 32
 
 # Base CONFIG
 BASE_CONFIG = {
+    'root_loc': ROOT_LOC,
     'num_layers': 6,
     'input_dim': CNN_INPUT_DIM,
     'input_channels': 1,
@@ -41,11 +41,11 @@ BASE_CONFIG = {
     'embedding_dim': 16,
     'max_len': 100,
     'train_params': {
+        'random_seed': 42,
         'lr': 1e-3,
         'epochs': 100,
         'lr_decay': 0.5,
         'lr_decay_step': 10,
-        'clip': 5,
         'print_every': 100,
         'save_every': 10,
         'save_loc': './checkpoints/',
