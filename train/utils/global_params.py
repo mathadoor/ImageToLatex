@@ -8,7 +8,7 @@ CROHME_VAL = os.path.join(CROHME_PATH, 'val')
 VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
 
 # Image size Original (OG) vs Transformed (TR)
-OG_IMG_SIZE = (64, 64)
+OG_IMG_SIZE = (512, 512)
 TR_IMAGE_SIZE = 128
 
 # CNN input dimension

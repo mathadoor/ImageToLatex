@@ -87,8 +87,6 @@ def convert_to_string(tensor, index_to_word):
     for i in tensor:
         if i in [0, 2]:
             continue
-        if i == 3:
-            break
         string += index_to_word[i] + ' '
 
     return string.strip()

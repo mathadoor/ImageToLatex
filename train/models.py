@@ -26,8 +26,10 @@ class VanillaWAP(nn.Module):
         x = self.watcher(x)
 
         # Positional Encoding
-        # x = x + self.positional_encoder
-        x = torch.reshape(x, (x.shape[0], x.shape[1], 1, -1))
+        x = x + self.positional_encoder
+        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
+        x = x.permute(0, 2, 1)
+
         # RNN Decoder
 
         y = 2 * torch.ones((x.shape[0], 1)).long()
@@ -44,7 +46,7 @@ class VanillaWAP(nn.Module):
                 y = target[:, i].unsqueeze(1)
 
             # Embedding
-            logit_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
+            logit_t, h_t = self.parse(x, y, h_t)
             logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=1)
 
@@ -126,67 +128,70 @@ class VanillaWAP(nn.Module):
 
         D = self.config['num_features_map'][-1]
         L = self.config['output_dim'][0] * self.config['output_dim'][1]
+
         self.parser = nn.ModuleDict({
-            # LSTM Layers
-            'lstm' : nn.LSTM(self.config['embedding_dim'] + self.config['hidden_dim'],
-                            self.config['hidden_dim'], batch_first=True,
-                            num_layers=self.config['LSTM_num_layers'],
-                            dropout=self.config['dropout'],
-                            bidirectional=self.config['LSTM_bidirectional']).to(self.config['DEVICE']),
+            # Attention Weights
+            "U_a" : nn.Linear(D, L),
+            "W_a" : nn.Linear(self.config['hidden_dim'], L),
+            "nu_a" : nn.Linear(L, 1, bias=False),
 
-            # Define linear layers to compute the initial hidden and cell states of the forward and reverse LSTMs
-            'W_h' : nn.Linear(D, self.config['hidden_dim']).to(self.config['DEVICE']),
-            'W_c' : nn.Linear(D, self.config['cell_dim']).to(self.config['DEVICE']),
+            # Hidden Layer Weights
+            "U_hz" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+            "U_hr" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+            "U_rh" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
 
-            # Define linear layers to project the hidden state and memory vector to get the attention weights
-            'W_1' : nn.Linear(self.config['hidden_dim'], L).to(self.config['DEVICE']),
-            'W_2' : nn.Linear(D, L).to(self.config['DEVICE']),
-            'beta' : nn.Linear(L, 1, bias=False).to(self.config['DEVICE']),
+            # Input Layer Weights
+            "W_yz" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "W_yr" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "W_yh" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
 
-            # Linear Layer to combine Hidden State and Context
-            'W_3' : nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False).to(
-            self.config['DEVICE']),
+            # Context Layer Weights
+            "C_cz" : nn.Linear(D, self.config['hidden_dim']),
+            "C_cr" : nn.Linear(D, self.config['hidden_dim']),
 
-            # Linear Layer to Project the Cell State to the Output Vocabulary
-            'W_4' : nn.Linear(self.config['cell_dim'], self.config['vocab_size'], bias=False).to(self.config['DEVICE'])
+            # Output Layer Weights
+            "W_c" : nn.Linear(D, self.config['embedding_dim']),
+            "W_h" : nn.Linear(self.config['hidden_dim'], self.config['embedding_dim']),
+            "W_o" : nn.Linear(self.config['embedding_dim'], self.config['vocab_size']),
 
         })
 
-    def parse(self, x, y, h_t_1=None, c_t_1=None, o_t_1=None):
+        self.parser.to(self.config['DEVICE'])
+
+    def parse(self, x, y, h_t_1=None):
         """
         x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
         y is of shape (batch_size, vocab) - (B, V)
         h_t_1 is of shape (batch_size, hidden_dim) - (B, H)
-        c_t_1 is of shape (batch_size, cell_dim) - (B, C)
         o_t_1 is of shape (batch_size, hidden_dim) - (B, H)
         """
 
         # Compute the initial hidden and cell states of the forward and reverse LSTMs
         if h_t_1 is None:
-            h_t_1 = torch.tanh(self.parser['W_h'](torch.mean(x, dim=-1).squeeze())).unsqueeze(0)
-            c_t_1 = torch.tanh(self.parser['W_c'](torch.mean(x, dim=-1).squeeze())).unsqueeze(0)
-            o_t_1 = torch.zeros((x.shape[0], self.config['hidden_dim'])).to(self.config['DEVICE'])
+            h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
 
-        w_t_1 = self.embedder(y).squeeze()
+        ey_t_1 = self.embedder(y).squeeze() # (B, E)
 
-        # Compute the hidden and cell states of the forward and reverse LSTMs
-        input_t_1 = torch.concat([w_t_1, o_t_1], dim=-1).unsqueeze(1)
-        _, (h_t, c_t) = self.parser['lstm'](input_t_1, (h_t_1, c_t_1))
+        # Compute the attention weights and context vector
+        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1)) # (B, L, L)
+        e_t = self.parser['nu_a'](e_t).squeeze() # (B, L)
+        alpha_t  = torch.softmax(e_t, dim=-1) # (B, L)
+        ct = torch.einsum("bl, bld -> bd", alpha_t, x) # (B, D)
 
-        # Compute the attention weights
-        input_t_11 = self.parser['W_1'](h_t).squeeze().unsqueeze(-1)
-        input_t_12 = self.parser['W_2'](x.view(x.shape[0], x.shape[3], x.shape[2], x.shape[1])).squeeze()
-        a_t = self.parser['beta'](torch.tanh(input_t_11 + input_t_12)).squeeze().unsqueeze(0)
-        alpha_t = torch.softmax(a_t, dim=-1)
+        # Forward Pass through GRU
+        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1) + self.parser['C_cz'](ct)) # (B, H)
+        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1) + self.parser['C_cr'](ct)) # (B, H)
 
-        # Compute the context vector
-        ctx_t = torch.einsum("ijkl, kil -> kij", x, alpha_t)
-        o_t = torch.tanh(self.parser['W_3'](torch.concat([h_t, ctx_t], dim=-1))).squeeze()
+        rt_ht = rt * h_t_1 # (B, H)
+        ht_tilde = torch.tanh(self.parser['W_yh'](ey_t_1) + self.parser['U_rh'](rt_ht) + self.parser['C_cz'](ct)) # (B, H)
 
-        # Compute the output vector
-        logit_t = self.parser['W_4'](o_t)
+        h_t = (1 - zt) * h_t_1 + zt * ht_tilde # (B, H)
 
-        return logit_t, h_t, c_t, o_t
+        # Compute the output
+        combined = self.parser['W_c'](ct) + self.parser['W_h'](h_t) # (B, E)
+        o_t = self.parser['W_o'](combined + ey_t_1) # (B, V)
+
+        return o_t, h_t
 
     def predict(self, x):
         pass
