@@ -54,11 +54,11 @@ BASE_CONFIG = {
         'save_every': 10,
         'save_loc': './checkpoints/',
         'load_loc': None,
-        'load': False,
+        'load': True,
         'load_epoch': 0,
         'load_step': 0,
         'load_best': False,
-        'load_iter': 0,
+        'load_iter': 20,
         'load_best_epoch': 0,
         'batch_size': BATCH_SIZE,
     }

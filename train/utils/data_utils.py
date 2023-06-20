@@ -43,7 +43,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
                 # if the attribute is truth, then export the label
                 if annotation.attrib['type'] == 'truth':
                     # Some labels have $ in the beginning and end. Remove them.
-                    label = re.findall('\$*([^\$]+)\$*?', annotation.text)[0].strip()
+                    label = re.findall('\$*?([^\$]+)\$*?', annotation.text)[0].strip()
                     with open(label_loc + inkml_file.split('/')[-1].split('.')[0] + '.txt', 'w') as f:
                         f.write(label)
 
@@ -160,8 +160,10 @@ def visit_node(node):
         ret.append(token)
 
     if node.nodeType() == LatexGroupNode:
+        ret.append('{')
         for node_child in node.nodelist:
-            visit_node(node_child)
+            ret += visit_node(node_child)
+        ret.append('}')
 
     if node.nodeType() == LatexCharsNode:
         for char in node.chars:
@@ -244,8 +246,8 @@ def preprocess_data(csv_loc):
 
 # Main Function
 if __name__ == '__main__':
-    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")

@@ -24,6 +24,8 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
+criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
+
 # Evaluation Constructs
 wer = WordErrorRate(device=BASE_CONFIG['DEVICE'])
 
@@ -105,8 +107,13 @@ for i in range(train_params['epochs']):
 
         # Compute Loss as cross entropy
         # loss = torch.nn.functional.cross_entropy(p, y)
-        loss = torch.nn.functional.cross_entropy(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
+        loss = criterion(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
 
+        # Computer WER
+        y_pred = torch.argmax(p, dim=1).detach().cpu().numpy()
+        y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
+        y_true = y.detach().cpu().numpy()
+        y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
 
         # Backpropagation with clipped gradients
         loss.backward()
@@ -114,6 +121,7 @@ for i in range(train_params['epochs']):
         optimizer.step()
 
         optimizer.zero_grad()
+
 
         # Update loss
         train_loss.update(loss.item())
@@ -129,7 +137,7 @@ for i in range(train_params['epochs']):
             p = model(x)[:,:max_len,:]
 
             # Compute Loss as cross entropy
-            loss = torch.nn.functional.cross_entropy(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
+            loss = criterion(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
             # loss = torch.nn.functional.cross_entropy(p[:,:max_len,:], torch.nn.functional.one_hot(y, model.config['vocab_size']).float())
             val_loss.update(loss.item())
 

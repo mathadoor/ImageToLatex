@@ -58,6 +58,11 @@ class ImageDataset(Dataset):
         return len(self.image_paths)
 
     def tokenize(self, sentence):
-        return [self.word_to_index["<SOS>"]] + [self.word_to_index.get(word, self.word_to_index["<UNK>"]) for word in
-                                           sentence.split()] + [self.word_to_index["<EOS>"]]
-
+        ret = [self.word_to_index["<SOS>"]]
+        for word in sentence.split():
+            if word not in self.word_to_index:
+                ret.append(self.word_to_index["<UNK>"])
+                continue
+            ret.append(self.word_to_index[word])
+        ret.append(self.word_to_index["<EOS>"])
+        return  ret

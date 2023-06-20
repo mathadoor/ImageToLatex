@@ -36,7 +36,7 @@ class VanillaWAP(nn.Module):
         i = 0
         # While all y are not index = 3 and max length is not reached
         o_t, c_t, h_t = None, None, None
-        while not torch.all(y == 3) and i < self.config['max_len']:
+        while i < self.config['max_len']:
 
             # Embedding
             logit_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
@@ -135,7 +135,7 @@ class VanillaWAP(nn.Module):
             # Define linear layers to project the hidden state and memory vector to get the attention weights
             'W_1' : nn.Linear(self.config['hidden_dim'], L).to(self.config['DEVICE']),
             'W_2' : nn.Linear(D, L).to(self.config['DEVICE']),
-            'beta' : nn.Linear(L, 1).to(self.config['DEVICE']),
+            'beta' : nn.Linear(L, 1, bias=False).to(self.config['DEVICE']),
 
             # Linear Layer to combine Hidden State and Context
             'W_3' : nn.Linear(self.config['hidden_dim'] + D, self.config['cell_dim'], bias=False).to(
