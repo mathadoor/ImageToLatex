@@ -85,8 +85,10 @@ def convert_to_string(tensor, index_to_word):
     tensor = tensor.tolist()
     string = ''
     for i in tensor:
-        if i in [0, 2, 3]:
+        if i in [0, 2]:
             continue
+        if i == 3:
+            break
         string += index_to_word[i] + ' '
 
     return string.strip()
@@ -100,7 +102,7 @@ for i in range(train_params['epochs']):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
-        p = model(x)[:,:max_len,:] # (B, L, V)
+        p = model(x, target=y)[:,:max_len,:] # (B, L, V)
 
         # One hot encode y
         # y = torch.nn.functional.one_hot(y, model.config['vocab_size']).float()
@@ -126,7 +128,7 @@ for i in range(train_params['epochs']):
         # Update loss
         train_loss.update(loss.item())
 
-    scheduler.step()
+    # scheduler.step()
     print(f'\tTraining Loss during epoch {i}: {train_loss.compute()}')
 
     with torch.no_grad():

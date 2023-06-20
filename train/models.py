@@ -21,12 +21,12 @@ class VanillaWAP(nn.Module):
         if config['train_params']['load']:
             self.load()
 
-    def forward(self, x):
+    def forward(self, x, target=None):
         # CNN Feature Extraction
         x = self.watcher(x)
 
         # Positional Encoding
-        x = x + self.positional_encoder
+        # x = x + self.positional_encoder
         x = torch.reshape(x, (x.shape[0], x.shape[1], 1, -1))
         # RNN Decoder
 
@@ -38,6 +38,11 @@ class VanillaWAP(nn.Module):
         o_t, c_t, h_t = None, None, None
         while i < self.config['max_len']:
 
+            if target is not None:
+                if i >= target.shape[1]:
+                    break
+                y = target[:, i].unsqueeze(1)
+
             # Embedding
             logit_t, h_t, c_t, o_t = self.parse(x, y, c_t, h_t, o_t)
             logit[:, i, :] = logit_t.squeeze()
@@ -45,6 +50,7 @@ class VanillaWAP(nn.Module):
 
             # Next Iter
             i += 1
+
 
         return logit
 

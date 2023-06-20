@@ -6,6 +6,7 @@ import os, re
 import xml.etree.ElementTree as ET
 from pylatexenc.latexwalker import LatexWalker, LatexCharsNode, LatexMacroNode, LatexGroupNode
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
 
@@ -246,8 +247,8 @@ def preprocess_data(csv_loc):
 
 # Main Function
 if __name__ == '__main__':
-    # generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")

@@ -9,10 +9,10 @@ VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
 
 # Image size Original (OG) vs Transformed (TR)
 OG_IMG_SIZE = (64, 64)
-TR_IMAGE_SIZE = 64
+TR_IMAGE_SIZE = 128
 
 # CNN input dimension
-CNN_INPUT_DIM = [64, 64]
+CNN_INPUT_DIM = [128, 128]
 
 # Compute VOCAB SIZE
 with open(VOCAB_LOC, 'r') as f:
@@ -54,7 +54,7 @@ BASE_CONFIG = {
         'save_every': 10,
         'save_loc': './checkpoints/',
         'load_loc': None,
-        'load': True,
+        'load': False,
         'load_epoch': 0,
         'load_step': 0,
         'load_best': False,
