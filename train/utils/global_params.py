@@ -9,10 +9,10 @@ VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
 
 # Image size Original (OG) vs Transformed (TR)
 OG_IMG_SIZE = (512, 512)
-TR_IMAGE_SIZE = (128, 128)
+TR_IMAGE_SIZE = (256, 256)
 
 # CNN input dimension
-CNN_INPUT_DIM = [128, 128]
+CNN_INPUT_DIM = [256, 256]
 
 # Compute VOCAB SIZE
 with open(VOCAB_LOC, 'r') as f:
@@ -40,7 +40,7 @@ BASE_CONFIG = {
     'hidden_dim': 256,
     'cell_dim': 64,
     'vocab_size': VOCAB_SIZE + 4,
-    'embedding_dim': 100,
+    'embedding_dim': 32,
     'LSTM_bidirectional': False,
     'LSTM_num_layers': 1,
     'dropout': 0.2,

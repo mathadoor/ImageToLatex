@@ -20,7 +20,7 @@ model = VanillaWAP(BASE_CONFIG)
 
 # Training Constructs
 train_params = BASE_CONFIG['train_params']
-optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_decay=1e-5)
+optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_decay=1e-4)
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
@@ -93,6 +93,18 @@ def convert_to_string(tensor, index_to_word):
 
     return string.strip()
 
+def compute_loss(logit, gt, seq_len):
+
+    p = torch.nn.functional.log_softmax(logit, dim=-1)
+    p = torch.gather(p, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
+
+    l_2d = l.repeat_interleave(torch.max(seq_len)).reshape(seq_len.shape[0], -1)
+    mask = torch.arange(torch.max(seq_len)) < seq_len.view(-1, 1)
+    mask_matrix = l_2d * mask / seq_len.view(-1, 1)
+
+    # Compute Loss as cross entropy
+    return -torch.sum(p * mask_matrix) / torch.sum(l)
+
 # Setup Training Loop
 train_loss, val_loss = AverageMeter(), AverageMeter()
 val_wer = AverageMeter(best=True, best_type='max')
@@ -102,20 +114,10 @@ for i in range(train_params['epochs']):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
-        p = model(x, target=y)[:,:max_len,:] # (B, L, V)
+        logit = model(x, target=y)[:, :max_len, :] # (B, L, V)
 
-        # One hot encode y
-        # y = torch.nn.functional.one_hot(y, model.config['vocab_size']).float()
-
-        # Compute Loss as cross entropy
-        # loss = torch.nn.functional.cross_entropy(p, y)
-        loss = criterion(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
-
-        # Computer WER
-        y_pred = torch.argmax(p, dim=1).detach().cpu().numpy()
-        y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
-        y_true = y.detach().cpu().numpy()
-        y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
+        # Compute Loss
+        loss = compute_loss(logit, y, l)
 
         # Backpropagation with clipped gradients
         loss.backward()
@@ -136,15 +138,16 @@ for i in range(train_params['epochs']):
         for x, y, l in dataloader_val:
             # Set model to eval mode
             max_len = y.shape[1]
-            p = model(x)[:,:max_len,:]
+            logit = model(x)[:, :max_len, :]
 
             # Compute Loss as cross entropy
-            loss = criterion(p.contiguous().view(-1, p.size(-1)), y.contiguous().view(-1))
+            loss = compute_loss(logit, y, l)
+            # loss = criterion(logit.contiguous().view(-1, logit.size(-1)), y.contiguous().view(-1))
             # loss = torch.nn.functional.cross_entropy(p[:,:max_len,:], torch.nn.functional.one_hot(y, model.config['vocab_size']).float())
-            val_loss.update(loss.item())
+            # val_loss.update(loss.item())
 
             # Computer WER
-            y_pred = torch.argmax(p, dim=1).detach().cpu().numpy()
+            y_pred = torch.argmax(logit, dim=1).detach().cpu().numpy()
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
             y_true = y.detach().cpu().numpy()
             y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
