@@ -35,10 +35,10 @@ class VanillaWAP(nn.Module):
         y = 2 * torch.ones((x.shape[0], 1)).long()
         logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] ))
 
-        i = 0
+        logit[:, 0, :] = 2
         # While all y are not index = 3 and max length is not reached
         o_t, c_t, h_t = None, None, None
-        while i < self.config['max_len']:
+        for i in range(1, self.config['max_len']):
 
             if target is not None:
                 if i >= target.shape[1]:
@@ -50,8 +50,7 @@ class VanillaWAP(nn.Module):
             logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=1)
 
-            # Next Iter
-            i += 1
+
 
 
         return logit
@@ -200,6 +199,7 @@ class VanillaWAP(nn.Module):
         """
         Saves the model every self.config.train_params['save_every'] iterations in the directory specified by
         'save_loc' key in the config file
+        :param best:
         :param iteration:
         :return:
         """

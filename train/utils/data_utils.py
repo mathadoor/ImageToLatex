@@ -122,6 +122,26 @@ def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         # i += 1
         # if i == 10:
         #     break
+
+def extract_labels(label_loc, new_label_loc):
+    """
+    :param new_label_loc:
+    :param label_loc: location of the label files
+    :return: a list of labels
+    """
+    # Get all the label files
+    label_files = os.listdir(label_loc)
+
+    # List of labels
+
+    # For each label file, extract the label
+    for label_file in tqdm(label_files):
+        with open(os.path.join(label_loc, label_file), 'r') as f:
+            label = f.read().split("\n\n")[1]
+
+        with open(os.path.join(new_label_loc, label_file), 'w') as f:
+            f.write(label)
+
 def generate_annotated_csv(img_loc, label_loc, csv_loc):
     """
     :param img_loc: location of the image files
@@ -249,6 +269,7 @@ def preprocess_data(csv_loc):
 if __name__ == '__main__':
     # generate_images(CROHME_TRAIN + "/SYNTHETIC/", CROHME_TRAIN + "/IMG_RENDERED/",
     #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
-    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
+    generate_annotated_csv(CROHME_TRAIN + "/IMG/", CROHME_TRAIN + "/NEW_IMG_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")
+    # extract_labels(CROHME_TRAIN + "/IMG_LABELS/", CROHME_TRAIN + "/NEW_IMG_LABELS/")

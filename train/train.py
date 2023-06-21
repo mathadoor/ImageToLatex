@@ -87,6 +87,8 @@ def convert_to_string(tensor, index_to_word):
     for i in tensor:
         if i in [0, 2]:
             continue
+        if i == 3:
+            break
         string += index_to_word[i] + ' '
 
     return string.strip()
@@ -96,7 +98,7 @@ train_loss, val_loss = AverageMeter(), AverageMeter()
 val_wer = AverageMeter(best=True, best_type='max')
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
-    for x, y in tqdm(dataloader_train):
+    for x, y, l in tqdm(dataloader_train):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
@@ -131,7 +133,7 @@ for i in range(train_params['epochs']):
 
     with torch.no_grad():
         model.eval()
-        for x, y in dataloader_val:
+        for x, y, l in dataloader_val:
             # Set model to eval mode
             max_len = y.shape[1]
             p = model(x)[:,:max_len,:]
