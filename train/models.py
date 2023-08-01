@@ -50,9 +50,6 @@ class VanillaWAP(nn.Module):
             logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=1)
 
-
-
-
         return logit
 
     def generate_watcher(self):
