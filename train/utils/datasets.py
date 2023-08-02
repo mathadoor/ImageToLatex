@@ -5,13 +5,14 @@ from PIL import Image
 
 def collate_fn(batch):
     # Separate inputs and labels
-    inputs, labels, seq_len = zip(*batch)
+    inputs, labels, seq_len, anno_mask = zip(*batch)
 
     # Pad sequences
     inputs = pad_sequence(inputs, batch_first=True)
     labels = pad_sequence(labels, batch_first=True, padding_value=0)
+    anno_mask = pad_sequence(anno_mask, batch_first=True, padding_value=0)
     seq_lens = torch.tensor(seq_len)
-    return inputs, labels, seq_lens
+    return inputs, labels, seq_lens, anno_mask
 
 def get_vocabulary(csv_loc):
     """
@@ -51,15 +52,16 @@ class ImageDataset(Dataset):
             sentence = str(sentence)
         tokenized_sentences = self.tokenize(sentence)
         tensor_sentence = torch.tensor(tokenized_sentences)
+        anno_mask = torch.ones_like(tensor_sentence)
         seq_len = len(tensor_sentence)
 
-        return image, tensor_sentence, seq_len
+        return image, tensor_sentence, seq_len, anno_mask
 
     def __len__(self):
         return len(self.image_paths)
 
     def tokenize(self, sentence):
-        ret = [self.word_to_index["<SOS>"]]
+        ret = []
         for word in sentence.split():
             if word not in self.word_to_index:
                 ret.append(self.word_to_index["<UNK>"])

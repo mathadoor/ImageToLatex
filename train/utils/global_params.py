@@ -9,10 +9,10 @@ VOCAB_LOC = CROHME_TRAIN + '/tex_symbols.csv'
 
 # Image size Original (OG) vs Transformed (TR)
 OG_IMG_SIZE = (512, 512)
-TR_IMAGE_SIZE = (256, 256)
+TR_IMAGE_SIZE = (512, 512)
 
 # CNN input dimension
-CNN_INPUT_DIM = [256, 256]
+CNN_INPUT_DIM = [512, 512]
 
 # Compute VOCAB SIZE
 with open(VOCAB_LOC, 'r') as f:
@@ -36,11 +36,12 @@ BASE_CONFIG = {
     'feature_pooling_stride': [None, None, None, (2, 2), None, None, None, (2, 2),
                                None, None, None, (2, 2), None, None, None, (2, 2)],
     'batch_norm':[True] * 16,
-    'DEVICE': torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
     'hidden_dim': 256,
+    'attention_dim' : 256,
     'cell_dim': 64,
     'vocab_size': VOCAB_SIZE + 4,
-    'embedding_dim': 32,
+    'embedding_dim': 256,
     'LSTM_bidirectional': False,
     'LSTM_num_layers': 1,
     'dropout': 0.2,
@@ -54,7 +55,7 @@ BASE_CONFIG = {
         'lr_decay_step': 10,
         'print_every': 100,
         'save_every': 1,
-        'save_loc': './checkpoints/',
+        'save_loc': '/checkpoints/',
         'load_loc': None,
         'load': False,
         'load_epoch': 0,

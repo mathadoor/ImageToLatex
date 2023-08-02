@@ -9,7 +9,7 @@ import pandas as pd
 from tqdm import tqdm
 
 # Define Dataset
-train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv') # Location
+train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')  # Location
 
 # Define transforms
 transform = transforms.Compose([transforms.Resize(TR_IMAGE_SIZE), transforms.ToTensor()])
@@ -34,6 +34,7 @@ generator = torch.Generator().manual_seed(train_params['random_seed'])
 train, val = random_split(dataset, [0.8, 0.2], generator=generator)
 dataloader_train = DataLoader(train, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 dataloader_val = DataLoader(val, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+
 
 # Define AverageMeter
 class AverageMeter:
@@ -76,6 +77,7 @@ class AverageMeter:
         else:
             raise ValueError('best_type must be either min or max')
 
+
 def convert_to_string(tensor, index_to_word):
     """
     :param tensor: (B, L)
@@ -93,31 +95,41 @@ def convert_to_string(tensor, index_to_word):
 
     return string.strip()
 
-def compute_loss(logit, gt, seq_len):
 
+def compute_loss(logit, gt, seq_len):
     p = torch.nn.functional.log_softmax(logit, dim=-1)
     p = torch.gather(p, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
 
-    l_2d = l.repeat_interleave(torch.max(seq_len)).reshape(seq_len.shape[0], -1)
-    mask = torch.arange(torch.max(seq_len)) < seq_len.view(-1, 1)
+    l_2d = seq_len.repeat_interleave(torch.max(seq_len)).reshape(seq_len.shape[0], -1)
+    mask = torch.arange(torch.max(seq_len)).to(BASE_CONFIG['DEVICE']) < seq_len.view(-1, 1)
     mask_matrix = l_2d * mask / seq_len.view(-1, 1)
 
     # Compute Loss as cross entropy
     return -torch.sum(p * mask_matrix) / torch.sum(l)
+
 
 # Setup Training Loop
 train_loss, val_loss = AverageMeter(), AverageMeter()
 val_wer = AverageMeter(best=True, best_type='max')
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
-    for x, y, l in tqdm(dataloader_train):
+    model.train()
+    for x, y, l, label_mask in tqdm(dataloader_train):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
-        logit = model(x, target=y)[:, :max_len, :] # (B, L, V)
+        x = x.to(BASE_CONFIG['DEVICE'])
+        y = y.to(BASE_CONFIG['DEVICE'])
+        l = l.to(BASE_CONFIG['DEVICE'])
+        label_mask = label_mask.to(BASE_CONFIG['DEVICE'])
+        logit = model(x, target=y)[:, :max_len, :]  # (B, L, V)
 
         # Compute Loss
-        loss = compute_loss(logit, y, l)
+        # loss = compute_loss(logit, y, l)
+        # loss = criterion(logit.transpose(1, 2), y)
+        logp = torch.nn.functional.log_softmax(logit, dim=-1)
+        div = torch.gather(logp, dim=-1, index=y.unsqueeze(-1)).squeeze(-1)
+        loss = -torch.mean(torch.sum(div * label_mask, dim=-1))
 
         # Backpropagation with clipped gradients
         loss.backward()
@@ -125,7 +137,6 @@ for i in range(train_params['epochs']):
         optimizer.step()
 
         optimizer.zero_grad()
-
 
         # Update loss
         train_loss.update(loss.item())
@@ -135,19 +146,18 @@ for i in range(train_params['epochs']):
 
     with torch.no_grad():
         model.eval()
-        for x, y, l in dataloader_val:
+        for x, y, l, label_mask in dataloader_val:
             # Set model to eval mode
+            x, y, l, label_mask = x.to(BASE_CONFIG['DEVICE']), y.to(BASE_CONFIG['DEVICE']), l.to(
+                BASE_CONFIG['DEVICE']), label_mask.to(BASE_CONFIG['DEVICE'])
             max_len = y.shape[1]
             logit = model(x)[:, :max_len, :]
 
             # Compute Loss as cross entropy
             loss = compute_loss(logit, y, l)
-            # loss = criterion(logit.contiguous().view(-1, logit.size(-1)), y.contiguous().view(-1))
-            # loss = torch.nn.functional.cross_entropy(p[:,:max_len,:], torch.nn.functional.one_hot(y, model.config['vocab_size']).float())
-            # val_loss.update(loss.item())
 
             # Computer WER
-            y_pred = torch.argmax(logit, dim=1).detach().cpu().numpy()
+            y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
             y_true = y.detach().cpu().numpy()
             y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
@@ -155,14 +165,14 @@ for i in range(train_params['epochs']):
             # Update Val_WER
             wer.update(y_pred, y_true)
             val_wer.update(wer.compute())
-            wer.reset()
+            val_loss.update(loss.item())
 
     print(f'\tValidation WER during epoch {i}: {val_wer.compute()}')
     print(f'\tValidation Loss during epoch {i}: {val_loss.compute()}')
 
     # Save model if val_wer is best
-    if val_wer.is_best():
-        model.save(best=True)
+    # if val_wer.is_best():
+    #     model.save(best=True)
 
     # Reset AverageMeters
     train_loss.reset()
@@ -170,4 +180,4 @@ for i in range(train_params['epochs']):
     val_wer.reset()
 
     # Save model
-    model.save(iteration=i)
+    # model.save(iteration=i)

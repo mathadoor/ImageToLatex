@@ -71,7 +71,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         max_y = max(point[1] for trace in traces for point in trace)
 
         # Create an empty image
-        img = 255 * np.ones(img_size, dtype=np.uint8)
+        img = np.zeros(img_size, dtype=np.uint8)
 
         # Draw the traces onto the image
         for trace in traces:
@@ -85,10 +85,10 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
                 # Create a line from (x1, y1) to (x2, y2)
                 rr, cc = line(y1, x1, y2, x2)
 
-                # For each pixel on the line, create a disk of radius line_width / 2 and set it to black
+                # For each pixel on the line, create a disk of radius line_width / 2 and set it to white
                 for r, c in zip(rr, cc):
                     rr_disk, cc_disk = disk((r, c), radius=line_width, shape=img.shape)
-                    img[rr_disk, cc_disk] = 0  # Set the pixels within the disk to black
+                    img[rr_disk, cc_disk] = 255  # Set the pixels within the disk to white
 
         # Save the image
         imsave(img_loc + inkml_file.split('/')[-1].split('.')[0] + '.png', img)
@@ -267,9 +267,9 @@ def preprocess_data(csv_loc):
 
 # Main Function
 if __name__ == '__main__':
-    # generate_images(CROHME_TRAIN + "/SYNTHETIC/", CROHME_TRAIN + "/IMG_RENDERED/",
-    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
-    generate_annotated_csv(CROHME_TRAIN + "/IMG/", CROHME_TRAIN + "/NEW_IMG_LABELS/", CROHME_TRAIN + "/train.csv")
+    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
+                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")
     # extract_labels(CROHME_TRAIN + "/IMG_LABELS/", CROHME_TRAIN + "/NEW_IMG_LABELS/")

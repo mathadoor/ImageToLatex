@@ -26,24 +26,24 @@ class VanillaWAP(nn.Module):
         x = self.watcher(x)
 
         # Positional Encoding
-        x = x + self.positional_encoder
+        # x = x + self.positional_encoder
         x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
         x = x.permute(0, 2, 1)
 
         # RNN Decoder
 
-        y = 2 * torch.ones((x.shape[0], 1)).long()
-        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] ))
+        y = 2 * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
+        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] )).to(self.config['DEVICE'])
 
-        logit[:, 0, :] = 2
+        # logit[:, 0, 2] = 0
         # While all y are not index = 3 and max length is not reached
         o_t, c_t, h_t = None, None, None
-        for i in range(1, self.config['max_len']):
+        for i in range(self.config['max_len']):
 
-            if target is not None:
+            if target is not None and i != 0:
                 if i >= target.shape[1]:
                     break
-                y = target[:, i].unsqueeze(1)
+                y = target[:, i - 1].unsqueeze(1)
 
             # Embedding
             logit_t, h_t = self.parse(x, y, h_t)
@@ -107,14 +107,14 @@ class VanillaWAP(nn.Module):
         pe[2 * j + D // 2, x, y]     = torch.sin(y_i)
         pe[2 * j + 1 + D // 2, x, y] = torch.cos(y_i)
 
-        self.positional_encoder = pe
+        self.positional_encoder = pe.to(self.config['DEVICE'])
 
     def generate_embedder(self):
         """
         Generates the embedder
         :return:
         """
-        self.embedder = nn.Embedding(self.config['vocab_size'], self.config['embedding_dim'], padding_idx=0)
+        self.embedder = nn.Embedding(self.config['vocab_size'], self.config['embedding_dim'], padding_idx=0).to(self.config['DEVICE'])
 
     def generate_parser(self):
         """
@@ -126,10 +126,14 @@ class VanillaWAP(nn.Module):
         L = self.config['output_dim'][0] * self.config['output_dim'][1]
 
         self.parser = nn.ModuleDict({
+
+            # Initial Conversion
+            "W_2h" : nn.Linear(D, self.config['hidden_dim']),
+
             # Attention Weights
-            "U_a" : nn.Linear(D, L),
-            "W_a" : nn.Linear(self.config['hidden_dim'], L),
-            "nu_a" : nn.Linear(L, 1, bias=False),
+            "U_a" : nn.Linear(D, self.config['attention_dim'], bias=False),
+            "W_a" : nn.Linear(self.config['hidden_dim'], self.config['attention_dim'], bias=False),
+            "nu_a" : nn.Linear(self.config['attention_dim'], 1, bias=False),
 
             # Hidden Layer Weights
             "U_hz" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
@@ -162,30 +166,43 @@ class VanillaWAP(nn.Module):
         o_t_1 is of shape (batch_size, hidden_dim) - (B, H)
         """
 
-        # Compute the initial hidden and cell states of the forward and reverse LSTMs
+        # Compute the initial hidden
+        # h_0 = tanh( W_h @ mean(x) + b_h )
         if h_t_1 is None:
-            h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
-
-        ey_t_1 = self.embedder(y).squeeze() # (B, E)
+            # h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
+            h_t_1 = torch.tanh(self.parser['W_2h'](x.mean(dim=1).squeeze())) # (B, H)
 
         # Compute the attention weights and context vector
-        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1)) # (B, L, L)
+        # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
+        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1)) # (B, L, A)
         e_t = self.parser['nu_a'](e_t).squeeze() # (B, L)
         alpha_t  = torch.softmax(e_t, dim=-1) # (B, L)
-        ct = torch.einsum("bl, bld -> bd", alpha_t, x) # (B, D)
+        ct = torch.einsum("bl, bld -> bd", alpha_t, x)  # (B, D)
+
 
         # Forward Pass through GRU
+        # Embed the target sentence
+        ey_t_1 = self.embedder(y).squeeze() # (B, E)
+
+        # Compute the z gate
+        # z_t = sigmoid( W_yz @ e_t_1 + U_hz @ h_t_1 + C_cz @ c_t )
         zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1) + self.parser['C_cz'](ct)) # (B, H)
+
+        # Compute the reset gate
+        # r_t = sigmoid( W_yr @ e_t_1 + U_hr @ h_t_1 + C_cr @ c_t )
         rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1) + self.parser['C_cr'](ct)) # (B, H)
 
+        # Compute the candidate hidden state
+        # h_tilde = tanh( W_yh @ e_t_1 + U_rh @ (r_t * h_t_1) + C_cz @ c_t )
         rt_ht = rt * h_t_1 # (B, H)
         ht_tilde = torch.tanh(self.parser['W_yh'](ey_t_1) + self.parser['U_rh'](rt_ht) + self.parser['C_cz'](ct)) # (B, H)
 
+        # Compute the new hidden state
         h_t = (1 - zt) * h_t_1 + zt * ht_tilde # (B, H)
 
         # Compute the output
-        combined = self.parser['W_c'](ct) + self.parser['W_h'](h_t) # (B, E)
-        o_t = self.parser['W_o'](combined + ey_t_1) # (B, V)
+        # o_t = W_o @ ( W_c @ c_t + W_h @ h_t + e_t_1 )
+        o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1) # (B, V)
 
         return o_t, h_t
 
