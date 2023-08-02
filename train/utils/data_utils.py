@@ -69,7 +69,10 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         max_x = max(point[0] for trace in traces for point in trace)
         min_y = min(point[1] for trace in traces for point in trace)
         max_y = max(point[1] for trace in traces for point in trace)
-
+        aspect_ratio = (max_x - min_x) / (max_y - min_y)
+        if aspect_ratio < 0.5 or aspect_ratio > 2:
+            # print("Aspect ratio is too wide: {}".format(inkml_file))
+            return
         # Create an empty image
         img = np.zeros(img_size, dtype=np.uint8)
 
@@ -179,11 +182,17 @@ def visit_node(node):
         if re.findall("^gt\w", node.macroname) or re.findall("^lt\w", node.macroname):
             token = '\\' + node.macroname[0:2]
         ret.append(token)
+        # ret.append('{')
+        for node_child in node.nodeargd.argnlist:
+            if node_child != None:
+                ret += visit_node(node_child)
+        # ret.append('}')
 
     if node.nodeType() == LatexGroupNode:
         ret.append('{')
         for node_child in node.nodelist:
-            ret += visit_node(node_child)
+            if node_child != None:
+                ret += visit_node(node_child)
         ret.append('}')
 
     if node.nodeType() == LatexCharsNode:
@@ -267,8 +276,8 @@ def preprocess_data(csv_loc):
 
 # Main Function
 if __name__ == '__main__':
-    generate_images(CROHME_TRAIN + "/INKML/", CROHME_TRAIN + "/IMG_RENDERED/",
-                    export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
+    # generate_images(CROHME_TRAIN + "/SYNTHETIC/", CROHME_TRAIN + "/IMG_RENDERED/",
+    #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
     generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")

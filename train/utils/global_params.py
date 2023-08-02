@@ -51,7 +51,7 @@ BASE_CONFIG = {
         'lr': 0.0002,
         'epochs': 10,
         'lr_decay': 0.5,
-        'clip_grad_norm': 100,
+        'clip_grad_norm': 0.5,
         'lr_decay_step': 10,
         'print_every': 100,
         'save_every': 1,

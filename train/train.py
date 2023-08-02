@@ -129,8 +129,8 @@ for i in range(train_params['epochs']):
         # loss = criterion(logit.transpose(1, 2), y)
         logp = torch.nn.functional.log_softmax(logit, dim=-1)
         div = torch.gather(logp, dim=-1, index=y.unsqueeze(-1)).squeeze(-1)
-        loss = -torch.mean(torch.sum(div * label_mask, dim=-1))
-
+        # loss = -torch.mean(torch.sum(div * label_mask, dim=-1))
+        loss = -torch.sum(div * label_mask) / torch.sum(l)
         # Backpropagation with clipped gradients
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), train_params['clip_grad_norm'])
