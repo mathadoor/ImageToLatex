@@ -9,18 +9,26 @@ import pandas as pd
 from tqdm import tqdm
 
 # Define Dataset
-train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')  # Location
+# train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')  # Location
+train_data_csv = pd.read_csv(CROHME_TRAIN + '/wap_dataset.csv', sep='\t')  # Location
 
+# train_data_csv = pd.read_csv(CROHME_TRAIN + '/train_caption.txt', sep="\t", names=['image_loc', 'label'])
+# train_data_csv['image_loc'] = train_data_csv.apply(lambda row: f'{CROHME_TRAIN}/off_image_train/{row["image_loc"]}_0.bmp', axis=1)
+#
+# train_data_csv.to_csv(CROHME_TRAIN + '/wap_dataset.csv', sep='\t')
 # Define transforms
-transform = transforms.Compose([transforms.Resize(TR_IMAGE_SIZE), transforms.ToTensor()])
-dataset = ImageDataset(train_data_csv['image_loc'], train_data_csv['label'], VOCAB_LOC, transform=transform)
+transform = transforms.Compose([transforms.ToTensor()])
+
+dataset = ImageDataset(train_data_csv['image_loc'], train_data_csv['label'], VOCAB_LOC, device=BASE_CONFIG['DEVICE'],
+                       transform=transform)
 
 # Model
 model = VanillaWAP(BASE_CONFIG)
 
 # Training Constructs
 train_params = BASE_CONFIG['train_params']
-optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_decay=1e-4)
+# optimizer = torch.optim.Adam(model.parameters(), lr=train_params['lr'])
+optimizer = torch.optim.Adadelta(model.parameters())
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
@@ -96,16 +104,20 @@ def convert_to_string(tensor, index_to_word):
     return string.strip()
 
 
-def compute_loss(logit, gt, seq_len):
-    p = torch.nn.functional.log_softmax(logit, dim=-1)
-    p = torch.gather(p, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
-
-    l_2d = seq_len.repeat_interleave(torch.max(seq_len)).reshape(seq_len.shape[0], -1)
-    mask = torch.arange(torch.max(seq_len)).to(BASE_CONFIG['DEVICE']) < seq_len.view(-1, 1)
-    mask_matrix = l_2d * mask / seq_len.view(-1, 1)
+def compute_loss(logit, gt, seq_len, mask):
+    # p = torch.nn.functional.log_softmax(logit, dim=-1)
+    # p = torch.gather(p, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
+    #
+    # l_2d = seq_len.repeat_interleave(torch.max(seq_len)).reshape(seq_len.shape[0], -1)
+    # mask = torch.arange(torch.max(seq_len)).to(BASE_CONFIG['DEVICE']) < seq_len.view(-1, 1)
+    # mask_matrix = l_2d * mask / seq_len.view(-1, 1)
 
     # Compute Loss as cross entropy
-    return -torch.sum(p * mask_matrix) / torch.sum(l)
+    # return -torch.sum(p * mask_matrix) / torch.sum(l)
+    logp = torch.nn.functional.log_softmax(logit, dim=-1)
+    div = torch.gather(logp, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
+    return -torch.mean(torch.sum(div * label_mask, dim=-1))
+    # return -torch.sum(div * mask) / torch.sum(seq_len)
 
 
 # Setup Training Loop
@@ -114,23 +126,18 @@ val_wer = AverageMeter(best=True, best_type='max')
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
     model.train()
-    for x, y, l, label_mask in tqdm(dataloader_train):
+    for x, x_mask, y, l, label_mask in tqdm(dataloader_train):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
-        x = x.to(BASE_CONFIG['DEVICE'])
-        y = y.to(BASE_CONFIG['DEVICE'])
-        l = l.to(BASE_CONFIG['DEVICE'])
-        label_mask = label_mask.to(BASE_CONFIG['DEVICE'])
-        logit = model(x, target=y)[:, :max_len, :]  # (B, L, V)
+        if x.shape[0] == 1:
+            continue
+
+        logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
 
         # Compute Loss
-        # loss = compute_loss(logit, y, l)
+        loss = compute_loss(logit, y, l, label_mask)
         # loss = criterion(logit.transpose(1, 2), y)
-        logp = torch.nn.functional.log_softmax(logit, dim=-1)
-        div = torch.gather(logp, dim=-1, index=y.unsqueeze(-1)).squeeze(-1)
-        # loss = -torch.mean(torch.sum(div * label_mask, dim=-1))
-        loss = -torch.sum(div * label_mask) / torch.sum(l)
         # Backpropagation with clipped gradients
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), train_params['clip_grad_norm'])
@@ -146,15 +153,15 @@ for i in range(train_params['epochs']):
 
     with torch.no_grad():
         model.eval()
-        for x, y, l, label_mask in dataloader_val:
+        for x, x_mask, y, l, label_mask in dataloader_val:
             # Set model to eval mode
-            x, y, l, label_mask = x.to(BASE_CONFIG['DEVICE']), y.to(BASE_CONFIG['DEVICE']), l.to(
-                BASE_CONFIG['DEVICE']), label_mask.to(BASE_CONFIG['DEVICE'])
             max_len = y.shape[1]
-            logit = model(x)[:, :max_len, :]
+            if x.shape[0] == 1:
+                continue
+            logit = model(x, mask=x_mask, target=y)[:, :max_len, :]
 
             # Compute Loss as cross entropy
-            loss = compute_loss(logit, y, l)
+            loss = compute_loss(logit, y, l, label_mask)
 
             # Computer WER
             y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()

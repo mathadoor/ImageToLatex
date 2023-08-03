@@ -177,6 +177,7 @@ def generate_annotated_csv(img_loc, label_loc, csv_loc):
 
 def visit_node(node):
     ret = []
+
     if node.nodeType() == LatexMacroNode:
         token = '\\' + node.macroname
         if re.findall("^gt\w", node.macroname) or re.findall("^lt\w", node.macroname):

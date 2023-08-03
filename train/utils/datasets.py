@@ -5,14 +5,26 @@ from PIL import Image
 
 def collate_fn(batch):
     # Separate inputs and labels
-    inputs, labels, seq_len, anno_mask = zip(*batch)
+    images, image_mask, labels, seq_len, labels_mask = zip(*batch)
 
     # Pad sequences
-    inputs = pad_sequence(inputs, batch_first=True)
+    max_h = max([image.shape[1] for image in images])
+    max_w = max([image.shape[2] for image in images])
+
+    # Pad image and image_mask
+    images = list(images)
+    image_mask = list(image_mask)
+    for i in range(len(images)):
+        padding = (0, max_w-images[i].shape[2], 0, max_h-images[i].shape[1])
+        images[i] = torch.nn.functional.pad(images[i], padding, "constant", 0)
+        image_mask[i] = torch.nn.functional.pad(image_mask[i], padding, "constant", 0)
+
+    images = torch.stack(images)
+    image_mask = torch.stack(image_mask)
     labels = pad_sequence(labels, batch_first=True, padding_value=0)
-    anno_mask = pad_sequence(anno_mask, batch_first=True, padding_value=0)
+    labels_mask = pad_sequence(labels_mask, batch_first=True, padding_value=0)
     seq_lens = torch.tensor(seq_len)
-    return inputs, labels, seq_lens, anno_mask
+    return images, image_mask, labels, seq_lens, labels_mask
 
 def get_vocabulary(csv_loc):
     """
@@ -29,10 +41,11 @@ def get_vocabulary(csv_loc):
     return vocabulary
 
 class ImageDataset(Dataset):
-    def __init__(self, image_paths, labels, vocab_loc, transform=None):
+    def __init__(self, image_paths, labels, vocab_loc, device, transform=None):
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
+        self.device = device
 
         self.vocab = get_vocabulary(vocab_loc)
         self.word_to_index = {word: i for i, word in enumerate(self.vocab)}
@@ -50,12 +63,16 @@ class ImageDataset(Dataset):
         sentence = self.labels[index]
         if type(sentence) != str:
             sentence = str(sentence)
-        tokenized_sentences = self.tokenize(sentence)
-        tensor_sentence = torch.tensor(tokenized_sentences)
-        anno_mask = torch.ones_like(tensor_sentence)
-        seq_len = len(tensor_sentence)
 
-        return image, tensor_sentence, seq_len, anno_mask
+        tokenized_sentences = self.tokenize(sentence)
+
+        image = image.to(self.device)
+        image_mask = torch.ones_like(image).to(self.device)
+        tensor_sentence = torch.tensor(tokenized_sentences).to(self.device)
+        anno_mask = torch.ones_like(tensor_sentence).to(self.device)
+        seq_len = torch.tensor(len(tensor_sentence)).to(self.device)
+
+        return image, image_mask, tensor_sentence, seq_len, anno_mask
 
     def __len__(self):
         return len(self.image_paths)

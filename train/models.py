@@ -2,6 +2,8 @@
 import torch
 from torch import nn
 import os
+
+
 class VanillaWAP(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -11,9 +13,8 @@ class VanillaWAP(nn.Module):
         self.parser = None
         self.config = config
 
-
         self.generate_watcher()
-        self.generate_positional_encoder()
+        # self.generate_positional_encoder()
         self.generate_embedder()
         self.generate_parser()
 
@@ -21,19 +22,21 @@ class VanillaWAP(nn.Module):
         if config['train_params']['load']:
             self.load()
 
-    def forward(self, x, target=None):
+    def forward(self, x, mask=None, target=None):
         # CNN Feature Extraction
-        x = self.watcher(x)
+        x, feature_mask = self.watch(x, mask)
 
         # Positional Encoding
         # x = x + self.positional_encoder
         x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
         x = x.permute(0, 2, 1)
+        feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
+        feature_mask = feature_mask.permute(0, 2, 1)
 
         # RNN Decoder
 
         y = 2 * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
-        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'] )).to(self.config['DEVICE'])
+        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'])).to(self.config['DEVICE'])
 
         # logit[:, 0, 2] = 0
         # While all y are not index = 3 and max length is not reached
@@ -46,9 +49,13 @@ class VanillaWAP(nn.Module):
                 y = target[:, i - 1].unsqueeze(1)
 
             # Embedding
-            logit_t, h_t = self.parse(x, y, h_t)
+            logit_t, h_t = self.parse(x, y, h_t, feature_mask)
             logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=1)
+
+            # if all y are index = 3, break
+            if target is None and torch.all(y == 3):
+                break
 
         return logit
 
@@ -61,27 +68,43 @@ class VanillaWAP(nn.Module):
         self.watcher = nn.Sequential()
 
         # Kernel Dimension of each layer
-        layer_dims = [self.config['input_channels']] + self.config['num_features_map']
-        for i in range(self.config['num_layers']):
-            # Convolutional Layer
-            self.watcher.add_module('conv{}'.format(i),
-                                    nn.Conv2d(layer_dims[i], layer_dims[i+1],
-                                            self.config['feature_kernel_size'][i],
-                                            self.config['feature_kernel_stride'][i],
-                                            self.config['feature_padding'][i]))
+        # layer_dims = [self.config['input_channels']] + self.config['num_features_map']
+        for i in range(self.config['num_blocks']):
+            curr_block = nn.Sequential()
+            for j in range(self.config['num_layers'][i]):
+                # Convolutional Layer
+                curr_layer = nn.Sequential()
+                if j == 0:
+                    if i == 0:
+                        cin = self.config['input_channels']
+                    else:
+                        cin = self.config['num_features_map'][i - 1][-1]
+                else:
+                    cin = self.config['num_features_map'][i][-1]
+                cout = self.config['num_features_map'][i][j]
 
-            # Batch Normalization if required
-            if self.config['batch_norm'][i]:
-                self.watcher.add_module('batchnorm{}'.format(i), nn.BatchNorm2d(layer_dims[i + 1]))
+                curr_layer.add_module(f'conv2d', nn.Conv2d(cin, cout,
+                                                  self.config['feature_kernel_size'][i][j],
+                                                  self.config['feature_kernel_stride'][i][j],
+                                                  self.config['feature_padding'][i][j]))
 
-            # Activation Function
-            self.watcher.add_module('relu{}'.format(i), nn.ReLU())
+                # Dropout Layer
+                if self.config['conv_dropout'][i][j] != 0:
+                    curr_layer.add_module('conv_dropout2d', nn.Dropout2d(p=self.config['conv_dropout'][i][j]))
 
-            # Max Pooling if required
-            if self.config['feature_pooling_kernel_size'][i]:
-                self.watcher.add_module('maxpool{}'.format(i),
-                                        nn.MaxPool2d(self.config['feature_pooling_kernel_size'][i],
-                                                   self.config['feature_pooling_stride'][i]))
+                # Activation Function
+                curr_layer.add_module('relu{}', nn.ReLU())
+
+                # Max Pooling if required
+                if self.config['feature_pooling_kernel_size'][i][j]:
+                    curr_layer.add_module('maxpool2d', nn.MaxPool2d(self.config['feature_pooling_kernel_size'][i][j],
+                                                                  self.config['feature_pooling_stride'][i][j]))
+                # Batch Normalization if required
+                if self.config['batch_norm'][i][j]:
+                    curr_layer.add_module('batchnorm2d', nn.BatchNorm2d(cout))
+
+                curr_block.add_module(f'layer{j + 1}', curr_layer)
+            self.watcher.add_module(f'block{i + 1}', curr_block)
 
         self.watcher.to(self.config['DEVICE'])
 
@@ -90,8 +113,10 @@ class VanillaWAP(nn.Module):
         Generate 2-D Positional Encoding as per https://arxiv.org/pdf/1908.11415.pdf
         :return:
         """
-        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1], requires_grad=False)
-        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(self.config['num_features_map'][-1] // 4, requires_grad=False )
+        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1],
+                                                                        requires_grad=False)
+        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(
+            self.config['num_features_map'][-1] // 4, requires_grad=False)
         D = self.config['num_features_map'][-1]
 
         pe = torch.zeros((D, self.config['output_dim'][0], self.config['output_dim'][1]), requires_grad=False)
@@ -102,9 +127,9 @@ class VanillaWAP(nn.Module):
         x, y = x.unsqueeze(1), y.unsqueeze(0)
         i, j = i.unsqueeze(-1).unsqueeze(-1), j.unsqueeze(-1).unsqueeze(-1)
 
-        pe[2 * i, x, y]              = torch.sin(x_i)
-        pe[2 * i + 1, x, y]          = torch.cos(x_i)
-        pe[2 * j + D // 2, x, y]     = torch.sin(y_i)
+        pe[2 * i, x, y] = torch.sin(x_i)
+        pe[2 * i + 1, x, y] = torch.cos(x_i)
+        pe[2 * j + D // 2, x, y] = torch.sin(y_i)
         pe[2 * j + 1 + D // 2, x, y] = torch.cos(y_i)
 
         self.positional_encoder = pe.to(self.config['DEVICE'])
@@ -114,7 +139,8 @@ class VanillaWAP(nn.Module):
         Generates the embedder
         :return:
         """
-        self.embedder = nn.Embedding(self.config['vocab_size'], self.config['embedding_dim'], padding_idx=0).to(self.config['DEVICE'])
+        self.embedder = nn.Embedding(self.config['vocab_size'], self.config['embedding_dim'], padding_idx=0).to(
+            self.config['DEVICE'])
 
     def generate_parser(self):
         """
@@ -122,43 +148,42 @@ class VanillaWAP(nn.Module):
         :return:
         """
 
-        D = self.config['num_features_map'][-1]
-        L = self.config['output_dim'][0] * self.config['output_dim'][1]
+        D = self.config['num_features_map'][-1][-1]
 
         self.parser = nn.ModuleDict({
 
             # Initial Conversion
-            "W_2h" : nn.Linear(D, self.config['hidden_dim']),
+            "W_2h": nn.Linear(D, self.config['hidden_dim']),
 
             # Attention Weights
-            "U_a" : nn.Linear(D, self.config['attention_dim'], bias=False),
-            "W_a" : nn.Linear(self.config['hidden_dim'], self.config['attention_dim'], bias=False),
-            "nu_a" : nn.Linear(self.config['attention_dim'], 1, bias=False),
+            "U_a": nn.Linear(D, self.config['attention_dim'], bias=False),
+            "W_a": nn.Linear(self.config['hidden_dim'], self.config['attention_dim'], bias=False),
+            "nu_a": nn.Linear(self.config['attention_dim'], 1, bias=False),
 
             # Hidden Layer Weights
-            "U_hz" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
-            "U_hr" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
-            "U_rh" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+            "U_hz": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+            "U_hr": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+            "U_rh": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
 
             # Input Layer Weights
-            "W_yz" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
-            "W_yr" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
-            "W_yh" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "W_yz": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "W_yr": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "W_yh": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
 
             # Context Layer Weights
-            "C_cz" : nn.Linear(D, self.config['hidden_dim']),
-            "C_cr" : nn.Linear(D, self.config['hidden_dim']),
+            "C_cz": nn.Linear(D, self.config['hidden_dim']),
+            "C_cr": nn.Linear(D, self.config['hidden_dim']),
 
             # Output Layer Weights
-            "W_c" : nn.Linear(D, self.config['embedding_dim']),
-            "W_h" : nn.Linear(self.config['hidden_dim'], self.config['embedding_dim']),
-            "W_o" : nn.Linear(self.config['embedding_dim'], self.config['vocab_size']),
+            "W_c": nn.Linear(D, self.config['embedding_dim']),
+            "W_h": nn.Linear(self.config['hidden_dim'], self.config['embedding_dim']),
+            "W_o": nn.Linear(self.config['embedding_dim'], self.config['vocab_size']),
 
         })
 
         self.parser.to(self.config['DEVICE'])
 
-    def parse(self, x, y, h_t_1=None):
+    def parse(self, x, y, h_t_1=None, feature_mask=None):
         """
         x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
         y is of shape (batch_size, vocab) - (B, V)
@@ -170,41 +195,52 @@ class VanillaWAP(nn.Module):
         # h_0 = tanh( W_h @ mean(x) + b_h )
         if h_t_1 is None:
             # h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
-            h_t_1 = torch.tanh(self.parser['W_2h'](x.mean(dim=1).squeeze())) # (B, H)
+            h_t_1 = torch.tanh(self.parser['W_2h'](x.mean(dim=1).squeeze()))  # (B, H)
 
         # Compute the attention weights and context vector
         # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
-        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1)) # (B, L, A)
-        e_t = self.parser['nu_a'](e_t).squeeze() # (B, L)
-        alpha_t  = torch.softmax(e_t, dim=-1) # (B, L)
+        # try:
+        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1))  # (B, L, A)
+        e_t = self.parser['nu_a'](e_t).squeeze() + torch.where(feature_mask == 0, -torch.inf, 1).squeeze()   # (B, L)
+        alpha_t = torch.softmax(e_t, dim=-1)  # (B, L)
         ct = torch.einsum("bl, bld -> bd", alpha_t, x)  # (B, D)
-
 
         # Forward Pass through GRU
         # Embed the target sentence
-        ey_t_1 = self.embedder(y).squeeze() # (B, E)
+        ey_t_1 = self.embedder(y).squeeze()  # (B, E)
 
         # Compute the z gate
         # z_t = sigmoid( W_yz @ e_t_1 + U_hz @ h_t_1 + C_cz @ c_t )
-        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1) + self.parser['C_cz'](ct)) # (B, H)
+        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1))  # (B, H)
 
         # Compute the reset gate
         # r_t = sigmoid( W_yr @ e_t_1 + U_hr @ h_t_1 + C_cr @ c_t )
-        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1) + self.parser['C_cr'](ct)) # (B, H)
+        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1))  # (B, H)
 
         # Compute the candidate hidden state
         # h_tilde = tanh( W_yh @ e_t_1 + U_rh @ (r_t * h_t_1) + C_cz @ c_t )
-        rt_ht = rt * h_t_1 # (B, H)
-        ht_tilde = torch.tanh(self.parser['W_yh'](ey_t_1) + self.parser['U_rh'](rt_ht) + self.parser['C_cz'](ct)) # (B, H)
+        rt_ht = rt * h_t_1  # (B, H)
+        ht_tilde = torch.tanh(
+            self.parser['W_yh'](ey_t_1) + self.parser['U_rh'](rt_ht) + self.parser['C_cz'](ct))  # (B, H)
 
         # Compute the new hidden state
-        h_t = (1 - zt) * h_t_1 + zt * ht_tilde # (B, H)
+        h_t = (1 - zt) * h_t_1 + zt * ht_tilde  # (B, H)
 
         # Compute the output
         # o_t = W_o @ ( W_c @ c_t + W_h @ h_t + e_t_1 )
-        o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1) # (B, V)
+        o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1)  # (B, V)
 
         return o_t, h_t
+
+    def watch(self, x, mask=None):
+        for i in range(self.config['num_blocks']):
+            x = self.watcher[i](x)
+
+            if mask is not None:
+                mask = mask[:, :, ::2, ::2]
+            if mask.shape[2] != x.shape[2] or mask.shape[3] != x.shape[3]:
+                mask = mask[:, :, :x.shape[2], :x.shape[3]]
+        return x, mask
 
     def predict(self, x):
         pass

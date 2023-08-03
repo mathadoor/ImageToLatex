@@ -19,26 +19,28 @@ with open(VOCAB_LOC, 'r') as f:
     VOCAB_SIZE = len(f.readlines())
 
 # Training Parameters
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 
 # Base CONFIG
 BASE_CONFIG = {
     'root_loc': ROOT_LOC,
-    'num_layers': 16,
     'input_dim': CNN_INPUT_DIM,
     'input_channels': 1,
-    'num_features_map': [32, 32, 32, 32, 64, 64, 64, 64, 64, 64, 64, 64, 128, 128, 128, 128],
-    'feature_kernel_size': [3] * 16,
-    'feature_kernel_stride': [1] * 16,
-    'feature_padding': [1] * 16,
-    'feature_pooling_kernel_size': [None, None, None, (2, 2), None, None, None, (2, 2),
-                                    None, None, None, (2, 2), None, None, None, (2, 2)],
-    'feature_pooling_stride': [None, None, None, (2, 2), None, None, None, (2, 2),
-                               None, None, None, (2, 2), None, None, None, (2, 2)],
-    'batch_norm':[True] * 16,
+    'num_blocks': 4,
+    'num_layers': [4, 4, 4, 4],
+    'num_features_map': [[32, 32, 32, 32], [64, 64, 64, 64], [64, 64, 64, 64], [128, 128, 128, 128]],
+    'feature_kernel_size': [[3, 3, 3, 3], [3, 3, 3, 3], [3, 3, 3, 3], [3, 3, 3, 3]],
+    'feature_kernel_stride': [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]],
+    'feature_padding': [[1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1]],
+    'feature_pooling_kernel_size': [[None, None, None, (2, 2)], [None, None, None, (2, 2)],
+                                    [None, None, None, (2, 2)], [None, None, None, (2, 2)]],
+    'feature_pooling_stride': [[None, None, None, (2, 2)], [None, None, None, (2, 2)],
+                                    [None, None, None, (2, 2)], [None, None, None, (2, 2)]],
+    'conv_dropout': [[0] * 4, [0] * 4, [0] * 4, [0.2] * 4],
+    'batch_norm': [[True] * 4, [True] * 4, [True] * 4, [True] * 4],
     'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
     'hidden_dim': 256,
-    'attention_dim' : 256,
+    'attention_dim': 512,
     'cell_dim': 64,
     'vocab_size': VOCAB_SIZE + 4,
     'embedding_dim': 256,
@@ -46,12 +48,13 @@ BASE_CONFIG = {
     'LSTM_num_layers': 1,
     'dropout': 0.2,
     'max_len': 100,
+    'beam_width': 5,
     'train_params': {
         'random_seed': 42,
         'lr': 0.0002,
-        'epochs': 10,
+        'epochs': 200,
         'lr_decay': 0.5,
-        'clip_grad_norm': 0.5,
+        'clip_grad_norm': 100,
         'lr_decay_step': 10,
         'print_every': 100,
         'save_every': 1,
@@ -68,17 +71,16 @@ BASE_CONFIG = {
 }
 
 BASE_CONFIG['output_dim'] = BASE_CONFIG['input_dim']
-for i in range(BASE_CONFIG['num_layers']):
-    dim, p, s, k = (BASE_CONFIG['output_dim'], BASE_CONFIG['feature_padding'][i],
-                        BASE_CONFIG['feature_kernel_stride'][i], BASE_CONFIG['feature_kernel_size'][i])
-
-    dim[0] = (dim[0] + 2 * p - k) // s + 1
-    dim[1] = (dim[1] + 2 * p - k) // s + 1
-
-    if BASE_CONFIG['feature_pooling_kernel_size'][i]:
-        ps, pk = BASE_CONFIG['feature_pooling_stride'][i], BASE_CONFIG['feature_pooling_kernel_size'][i]
-        dim[0] = (dim[0] - pk[0]) // ps[0] + 1
-        dim[1] = (dim[1] - pk[1]) // ps[1] + 1
-
-    BASE_CONFIG['output_dim'] = dim
-
+# for i in range(BASE_CONFIG['num_layers']):
+#     dim, p, s, k = (BASE_CONFIG['output_dim'], BASE_CONFIG['feature_padding'][i],
+#                     BASE_CONFIG['feature_kernel_stride'][i], BASE_CONFIG['feature_kernel_size'][i])
+#
+#     dim[0] = (dim[0] + 2 * p - k) // s + 1
+#     dim[1] = (dim[1] + 2 * p - k) // s + 1
+#
+#     if BASE_CONFIG['feature_pooling_kernel_size'][i]:
+#         ps, pk = BASE_CONFIG['feature_pooling_stride'][i], BASE_CONFIG['feature_pooling_kernel_size'][i]
+#         dim[0] = (dim[0] - pk[0]) // ps[0] + 1
+#         dim[1] = (dim[1] - pk[1]) // ps[1] + 1
+#
+#     BASE_CONFIG['output_dim'] = dim
