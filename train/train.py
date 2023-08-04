@@ -147,6 +147,7 @@ for i in range(train_params['epochs']):
 
         # Update loss
         train_loss.update(loss.item())
+        # break
 
     # scheduler.step()
     print(f'\tTraining Loss during epoch {i}: {train_loss.compute()}')
@@ -158,13 +159,11 @@ for i in range(train_params['epochs']):
             max_len = y.shape[1]
             if x.shape[0] == 1:
                 continue
-            logit = model(x, mask=x_mask, target=y)[:, :max_len, :]
-
+            # logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
+            # y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
+            y_pred = model.translate(x, mask=x_mask)
             # Compute Loss as cross entropy
-            loss = compute_loss(logit, y, l, label_mask)
-
             # Computer WER
-            y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
             y_true = y.detach().cpu().numpy()
             y_true = [convert_to_string(y_true[i, :], dataset.index_to_word) for i in range(y_true.shape[0])]
@@ -172,10 +171,10 @@ for i in range(train_params['epochs']):
             # Update Val_WER
             wer.update(y_pred, y_true)
             val_wer.update(wer.compute())
-            val_loss.update(loss.item())
+            # val_loss.update(loss.item())
 
     print(f'\tValidation WER during epoch {i}: {val_wer.compute()}')
-    print(f'\tValidation Loss during epoch {i}: {val_loss.compute()}')
+    # print(f'\tValidation Loss during epoch {i}: {val_loss.compute()}')
 
     # Save model if val_wer is best
     # if val_wer.is_best():
@@ -183,7 +182,7 @@ for i in range(train_params['epochs']):
 
     # Reset AverageMeters
     train_loss.reset()
-    val_loss.reset()
+    # val_loss.reset()
     val_wer.reset()
 
     # Save model

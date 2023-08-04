@@ -40,7 +40,7 @@ class VanillaWAP(nn.Module):
 
         # logit[:, 0, 2] = 0
         # While all y are not index = 3 and max length is not reached
-        o_t, c_t, h_t = None, None, None
+        h_t = None
         for i in range(self.config['max_len']):
 
             if target is not None and i != 0:
@@ -58,6 +58,63 @@ class VanillaWAP(nn.Module):
                 break
 
         return logit
+
+    def translate(self, x, beam_width=10, mask=None):
+        """
+        Translate the input image to the corresponding latex
+        :return:
+        """
+        # CNN Feature Extraction
+        x, feature_mask = self.watch(x, mask)
+        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
+        x = x.permute(0, 2, 1)
+        feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
+        feature_mask = feature_mask.permute(0, 2, 1)
+
+        # RNN Decoder with beam search. Keep track of the top beam_width candidates
+        y = 2 * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
+        ret = []
+
+        # p, l, stop to compute the probability, length, and stop flag of each hypothesis
+        hypo_p = torch.zeros((x.shape[0], 1)).to(self.config['DEVICE'])
+        hypo_l = torch.zeros((x.shape[0], beam_width)).to(self.config['DEVICE'])
+        hypo_stop = torch.zeros((x.shape[0], beam_width)).to(self.config['DEVICE'])
+
+        h_t = None
+
+        for i in range(self.config['max_len']):
+            # If all y are index = 3, break
+            if torch.all(y == 3):
+                break
+            # Generate the logit for the current time step
+            logit_ht, h_t = self.parse(x, y, h_t, feature_mask)
+
+            # Get the probabilities of the top beam_width candidates
+            probs = torch.log_softmax(logit_ht.squeeze(), dim=-1) + hypo_p
+
+            # Get the top beam_width candidates
+            if i > 0:
+                probs = probs.permute(1, 0, 2)
+
+            hypo_p, top_idx = torch.topk(probs.reshape(x.shape[0], -1), beam_width)
+
+            # Project the top_idx to the corresponding beam_index and token_index
+            hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
+            beam_idx = (top_idx // self.config['vocab_size']).permute(1, 0)
+            y = (top_idx % self.config['vocab_size']).permute(1, 0).unsqueeze(-1)
+
+            # Select the decoded sequences in ret based on the beam_idx
+            if len(ret) != 0:
+                b = beam_idx.unsqueeze(-1).expand(-1, -1, ret.shape[-1])
+                ret = torch.gather(ret, 0, b)
+                ret = torch.cat((ret, y), dim=-1)
+            else:
+                ret = y
+
+            # Select the appropriate hidden state
+        return ret[0, :, :]
+
+
 
     def generate_watcher(self):
         """
@@ -200,10 +257,10 @@ class VanillaWAP(nn.Module):
         # Compute the attention weights and context vector
         # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
         # try:
-        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(1))  # (B, L, A)
+        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(-2))  # (B, L, A)
         e_t = self.parser['nu_a'](e_t).squeeze() + torch.where(feature_mask == 0, -torch.inf, 1).squeeze()   # (B, L)
         alpha_t = torch.softmax(e_t, dim=-1)  # (B, L)
-        ct = torch.einsum("bl, bld -> bd", alpha_t, x)  # (B, D)
+        ct = torch.einsum('...bl, bld -> ...bd', alpha_t, x.squeeze())  # (B, D) or (Beam_width, B, D)
 
         # Forward Pass through GRU
         # Embed the target sentence
@@ -211,11 +268,11 @@ class VanillaWAP(nn.Module):
 
         # Compute the z gate
         # z_t = sigmoid( W_yz @ e_t_1 + U_hz @ h_t_1 + C_cz @ c_t )
-        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1))  # (B, H)
+        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1) + self.parser['C_cz'](ct))  # (B, H)
 
         # Compute the reset gate
         # r_t = sigmoid( W_yr @ e_t_1 + U_hr @ h_t_1 + C_cr @ c_t )
-        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1))  # (B, H)
+        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1) + self.parser['C_cr'](ct))  # (B, H)
 
         # Compute the candidate hidden state
         # h_tilde = tanh( W_yh @ e_t_1 + U_rh @ (r_t * h_t_1) + C_cz @ c_t )
