@@ -76,9 +76,9 @@ class VanillaWAP(nn.Module):
         ret = []
 
         # p, l, stop to compute the probability, length, and stop flag of each hypothesis
-        hypo_p = torch.zeros((x.shape[0], 1)).to(self.config['DEVICE'])
-        hypo_l = torch.zeros((x.shape[0], beam_width)).to(self.config['DEVICE'])
-        hypo_stop = torch.zeros((x.shape[0], beam_width)).to(self.config['DEVICE'])
+        hypo_p = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
+        hypo_l = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
+        hypo_stop = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE']).to(torch.bool)
 
         h_t = None
 
@@ -90,18 +90,24 @@ class VanillaWAP(nn.Module):
             logit_ht, h_t = self.parse(x, y, h_t, feature_mask)
 
             # Get the probabilities of the top beam_width candidates
-            probs = torch.log_softmax(logit_ht.squeeze(), dim=-1) + hypo_p
+
+            probs = torch.log_softmax(logit_ht.squeeze(), dim=-1)
+            hypo_l += ~hypo_stop
 
             # Get the top beam_width candidates
             if i > 0:
-                probs = probs.permute(1, 0, 2)
+                probs = (probs + ~hypo_stop * hypo_p).permute(1, 0, 2)
 
             hypo_p, top_idx = torch.topk(probs.reshape(x.shape[0], -1), beam_width)
 
             # Project the top_idx to the corresponding beam_index and token_index
-            hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
             beam_idx = (top_idx // self.config['vocab_size']).permute(1, 0)
             y = (top_idx % self.config['vocab_size']).permute(1, 0).unsqueeze(-1)
+
+            # Get the hypothesis length, probability, and stop flag based on the beam_idx
+            hypo_l = torch.gather(hypo_l, 0, beam_idx.unsqueeze(-1))
+            hypo_stop = torch.gather(hypo_stop, 0, beam_idx.unsqueeze(-1))
+            hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
 
             # Select the decoded sequences in ret based on the beam_idx
             if len(ret) != 0:
@@ -111,11 +117,19 @@ class VanillaWAP(nn.Module):
             else:
                 ret = y
 
-            # Select the appropriate hidden state
-        return ret[0, :, :]
+            # Update the stop flag
+            hypo_stop = ((y == 3) | hypo_stop)
 
+            if torch.all(hypo_stop):
+                break
 
+        # Select the best candidate based on hypothesis probability / length
+        best_idx = torch.argmax(hypo_p / hypo_l, dim=0).squeeze()
+        ans = []
+        for i, index in enumerate(best_idx):
+            ans.append(ret[index, i, :].squeeze(0))
 
+        return torch.stack(ans, dim=0)
     def generate_watcher(self):
         """
         Generate the model based on the config
@@ -141,9 +155,9 @@ class VanillaWAP(nn.Module):
                 cout = self.config['num_features_map'][i][j]
 
                 curr_layer.add_module(f'conv2d', nn.Conv2d(cin, cout,
-                                                  self.config['feature_kernel_size'][i][j],
-                                                  self.config['feature_kernel_stride'][i][j],
-                                                  self.config['feature_padding'][i][j]))
+                                                           self.config['feature_kernel_size'][i][j],
+                                                           self.config['feature_kernel_stride'][i][j],
+                                                           self.config['feature_padding'][i][j]))
 
                 # Dropout Layer
                 if self.config['conv_dropout'][i][j] != 0:
@@ -155,7 +169,7 @@ class VanillaWAP(nn.Module):
                 # Max Pooling if required
                 if self.config['feature_pooling_kernel_size'][i][j]:
                     curr_layer.add_module('maxpool2d', nn.MaxPool2d(self.config['feature_pooling_kernel_size'][i][j],
-                                                                  self.config['feature_pooling_stride'][i][j]))
+                                                                    self.config['feature_pooling_stride'][i][j]))
                 # Batch Normalization if required
                 if self.config['batch_norm'][i][j]:
                     curr_layer.add_module('batchnorm2d', nn.BatchNorm2d(cout))
@@ -258,9 +272,9 @@ class VanillaWAP(nn.Module):
         # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
         # try:
         e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(-2))  # (B, L, A)
-        e_t = self.parser['nu_a'](e_t).squeeze() + torch.where(feature_mask == 0, -torch.inf, 1).squeeze()   # (B, L)
+        e_t = self.parser['nu_a'](e_t).squeeze() + torch.where(feature_mask == 0, -torch.inf, 1).squeeze()  # (B, L)
         alpha_t = torch.softmax(e_t, dim=-1)  # (B, L)
-        ct = torch.einsum('...bl, bld -> ...bd', alpha_t, x.squeeze())  # (B, D) or (Beam_width, B, D)
+        ct = torch.einsum('...l, ...ld -> ...d', alpha_t, x.squeeze())  # (B, D) or (Beam_width, B, D)
 
         # Forward Pass through GRU
         # Embed the target sentence

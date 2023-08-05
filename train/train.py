@@ -116,13 +116,14 @@ def compute_loss(logit, gt, seq_len, mask):
     # return -torch.sum(p * mask_matrix) / torch.sum(l)
     logp = torch.nn.functional.log_softmax(logit, dim=-1)
     div = torch.gather(logp, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
-    return -torch.mean(torch.sum(div * label_mask, dim=-1))
-    # return -torch.sum(div * mask) / torch.sum(seq_len)
+    # return -torch.mean(torch.sum(div * label_mask, dim=-1))
+    return -torch.sum(div * mask) / torch.sum(seq_len)
 
 
 # Setup Training Loop
 train_loss, val_loss = AverageMeter(), AverageMeter()
 val_wer = AverageMeter(best=True, best_type='max')
+j = 0
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
     model.train()
@@ -130,8 +131,6 @@ for i in range(train_params['epochs']):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
         max_len = y.shape[1]
-        if x.shape[0] == 1:
-            continue
 
         logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
 
@@ -147,18 +146,18 @@ for i in range(train_params['epochs']):
 
         # Update loss
         train_loss.update(loss.item())
-        # break
+        j += 1
+        if j < 0:
+            break
 
     # scheduler.step()
     print(f'\tTraining Loss during epoch {i}: {train_loss.compute()}')
-
+    print(f'Computing Validation WER Now...')
     with torch.no_grad():
         model.eval()
-        for x, x_mask, y, l, label_mask in dataloader_val:
+        for x, x_mask, y, l, label_mask in tqdm(dataloader_val):
             # Set model to eval mode
-            max_len = y.shape[1]
-            if x.shape[0] == 1:
-                continue
+            # max_len = y.shape[1]
             # logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
             # y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
             y_pred = model.translate(x, mask=x_mask)
