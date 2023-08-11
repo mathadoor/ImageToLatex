@@ -8,6 +8,11 @@ import torchvision.transforms as transforms
 import pandas as pd
 from tqdm import tqdm
 
+torch.manual_seed(0)
+
+SOS_INDEX = 0
+EOS_INDEX = 1
+
 # Define Dataset
 # train_data_csv = pd.read_csv(CROHME_TRAIN + '/train.csv')  # Location
 train_data_csv = pd.read_csv(CROHME_TRAIN + '/wap_dataset.csv', sep='\t')  # Location
@@ -28,11 +33,11 @@ model = VanillaWAP(BASE_CONFIG)
 # Training Constructs
 train_params = BASE_CONFIG['train_params']
 # optimizer = torch.optim.Adam(model.parameters(), lr=train_params['lr'])
-optimizer = torch.optim.Adadelta(model.parameters())
+optimizer = torch.optim.AdamW(model.parameters(), lr=train_params['lr'], weight_decay=train_params['weight_decay'])
+# optimizer = torch.optim.Adadelta(model.parameters())
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
                                             step_size=train_params['lr_decay_step'],
                                             gamma=train_params['lr_decay'])
-criterion = torch.nn.CrossEntropyLoss(ignore_index=0)
 
 # Evaluation Constructs
 wer = WordErrorRate(device=BASE_CONFIG['DEVICE'])
@@ -43,6 +48,17 @@ train, val = random_split(dataset, [0.8, 0.2], generator=generator)
 dataloader_train = DataLoader(train, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 dataloader_val = DataLoader(val, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
+# Define Expression Rate
+def compute_expr_rate(pred, gt):
+
+    correct = 0
+    for i in range(len(pred)):
+        pred[i] = pred[i].replace(' ', '')
+        gt[i] = gt[i].replace(' ', '')
+        if pred[i] == gt[i]:
+            correct += 1
+
+    return correct / len(pred)
 
 # Define AverageMeter
 class AverageMeter:
@@ -95,9 +111,9 @@ def convert_to_string(tensor, index_to_word):
     tensor = tensor.tolist()
     string = ''
     for i in tensor:
-        if i in [0, 2]:
+        if i in [SOS_INDEX]:
             continue
-        if i == 3:
+        if i == EOS_INDEX:
             break
         string += index_to_word[i] + ' '
 
@@ -116,13 +132,14 @@ def compute_loss(logit, gt, seq_len, mask):
     # return -torch.sum(p * mask_matrix) / torch.sum(l)
     logp = torch.nn.functional.log_softmax(logit, dim=-1)
     div = torch.gather(logp, dim=-1, index=gt.unsqueeze(-1)).squeeze(-1)
-    # return -torch.mean(torch.sum(div * label_mask, dim=-1))
-    return -torch.sum(div * mask) / torch.sum(seq_len)
+    return -torch.mean(torch.sum(div * label_mask, dim=-1))
+    # return -torch.sum(div * mask) / torch.sum(seq_len)
 
 
 # Setup Training Loop
 train_loss, val_loss = AverageMeter(), AverageMeter()
 val_wer = AverageMeter(best=True, best_type='max')
+val_expr = AverageMeter(best=True, best_type='max')
 j = 0
 for i in range(train_params['epochs']):
     print("Epoch: ", i)
@@ -130,9 +147,7 @@ for i in range(train_params['epochs']):
     for x, x_mask, y, l, label_mask in tqdm(dataloader_train):
         # Get Maximum length of a sequence in the batch, and use it to trim the output of the model
         # y.shape is (B, MAX_LEN) and x.shape is (B, L ,V) which is to be trimmed
-        max_len = y.shape[1]
-
-        logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
+        logit = model(x, mask=x_mask, target=y)
 
         # Compute Loss
         loss = compute_loss(logit, y, l, label_mask)
@@ -158,9 +173,9 @@ for i in range(train_params['epochs']):
         for x, x_mask, y, l, label_mask in tqdm(dataloader_val):
             # Set model to eval mode
             # max_len = y.shape[1]
-            # logit = model(x, mask=x_mask, target=y)[:, :max_len, :]  # (B, L, V)
-            # y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
-            y_pred = model.translate(x, mask=x_mask)
+            logit = model(x, mask=x_mask, target=y)
+            y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
+            # y_pred = model.translate(x, mask=x_mask)
             # Compute Loss as cross entropy
             # Computer WER
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
@@ -170,9 +185,11 @@ for i in range(train_params['epochs']):
             # Update Val_WER
             wer.update(y_pred, y_true)
             val_wer.update(wer.compute())
+            val_expr.update(compute_expr_rate(y_pred, y_true))
             # val_loss.update(loss.item())
 
     print(f'\tValidation WER during epoch {i}: {val_wer.compute()}')
+    print(f'\tValidation Expression Rate during epoch {i}: {val_expr.compute()}')
     # print(f'\tValidation Loss during epoch {i}: {val_loss.compute()}')
 
     # Save model if val_wer is best
@@ -183,6 +200,8 @@ for i in range(train_params['epochs']):
     train_loss.reset()
     # val_loss.reset()
     val_wer.reset()
+    wer.reset()
+    val_expr.reset()
 
     # Save model
     # model.save(iteration=i)

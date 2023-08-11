@@ -3,6 +3,8 @@ import torch
 from torch import nn
 import os
 
+SOS_INDEX = 0
+EOS_INDEX = 1
 
 class VanillaWAP(nn.Module):
     def __init__(self, config):
@@ -22,8 +24,9 @@ class VanillaWAP(nn.Module):
         if config['train_params']['load']:
             self.load()
 
-    def forward(self, x, mask=None, target=None):
+    def forward(self, x, mask, target, gen_viz=False):
         # CNN Feature Extraction
+        max_len = target.shape[1]
         x, feature_mask = self.watch(x, mask)
 
         # Positional Encoding
@@ -35,15 +38,15 @@ class VanillaWAP(nn.Module):
 
         # RNN Decoder
 
-        y = 2 * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
-        logit = torch.zeros((x.shape[0], self.config['max_len'], self.config['vocab_size'])).to(self.config['DEVICE'])
+        y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
+        logit = torch.zeros((x.shape[0], max_len, self.config['vocab_size'])).to(self.config['DEVICE'])
 
         # logit[:, 0, 2] = 0
-        # While all y are not index = 3 and max length is not reached
+        # While all y are not index = EOS_INDEX and max length is not reached
         h_t = None
-        for i in range(self.config['max_len']):
+        for i in range(max_len):
 
-            if target is not None and i != 0:
+            if i > 0:
                 if i >= target.shape[1]:
                     break
                 y = target[:, i - 1].unsqueeze(1)
@@ -53,9 +56,9 @@ class VanillaWAP(nn.Module):
             logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=1)
 
-            # if all y are index = 3, break
-            if target is None and torch.all(y == 3):
-                break
+            # if all y are index = EOS_INDEX, break
+            # if torch.all(y == EOS_INDEX):
+            #     break
 
         return logit
 
@@ -72,7 +75,7 @@ class VanillaWAP(nn.Module):
         feature_mask = feature_mask.permute(0, 2, 1)
 
         # RNN Decoder with beam search. Keep track of the top beam_width candidates
-        y = 2 * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
+        y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
         ret = []
 
         # p, l, stop to compute the probability, length, and stop flag of each hypothesis
@@ -83,8 +86,8 @@ class VanillaWAP(nn.Module):
         h_t = None
 
         for i in range(self.config['max_len']):
-            # If all y are index = 3, break
-            if torch.all(y == 3):
+            # If all y are index = EOS_INDEX, break
+            if torch.all(y == EOS_INDEX):
                 break
             # Generate the logit for the current time step
             logit_ht, h_t = self.parse(x, y, h_t, feature_mask)
@@ -118,7 +121,7 @@ class VanillaWAP(nn.Module):
                 ret = y
 
             # Update the stop flag
-            hypo_stop = ((y == 3) | hypo_stop)
+            hypo_stop = ((y == EOS_INDEX) | hypo_stop)
 
             if torch.all(hypo_stop):
                 break
@@ -248,7 +251,8 @@ class VanillaWAP(nn.Module):
             # Output Layer Weights
             "W_c": nn.Linear(D, self.config['embedding_dim']),
             "W_h": nn.Linear(self.config['hidden_dim'], self.config['embedding_dim']),
-            "W_o": nn.Linear(self.config['embedding_dim'], self.config['vocab_size']),
+            "W_yo": nn.Linear(self.config['embedding_dim'], self.config['embedding_dim']),
+            "W_o": nn.Linear(self.config['embedding_dim'] // 2, self.config['vocab_size']),
 
         })
 
@@ -266,7 +270,9 @@ class VanillaWAP(nn.Module):
         # h_0 = tanh( W_h @ mean(x) + b_h )
         if h_t_1 is None:
             # h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
-            h_t_1 = torch.tanh(self.parser['W_2h'](x.mean(dim=1).squeeze()))  # (B, H)
+            ctx_mean = (torch.einsum('...l, ...ld -> ...d', feature_mask.squeeze(), x).squeeze() /
+                        torch.sum(feature_mask.squeeze(), dim=-1).unsqueeze(-1))
+            h_t_1 = torch.tanh(self.parser['W_2h'](ctx_mean))  # (B, H)
 
         # Compute the attention weights and context vector
         # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
@@ -282,11 +288,11 @@ class VanillaWAP(nn.Module):
 
         # Compute the z gate
         # z_t = sigmoid( W_yz @ e_t_1 + U_hz @ h_t_1 + C_cz @ c_t )
-        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1) + self.parser['C_cz'](ct))  # (B, H)
+        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1))  # (B, H)
 
         # Compute the reset gate
         # r_t = sigmoid( W_yr @ e_t_1 + U_hr @ h_t_1 + C_cr @ c_t )
-        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1) + self.parser['C_cr'](ct))  # (B, H)
+        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1))  # (B, H)
 
         # Compute the candidate hidden state
         # h_tilde = tanh( W_yh @ e_t_1 + U_rh @ (r_t * h_t_1) + C_cz @ c_t )
@@ -299,9 +305,44 @@ class VanillaWAP(nn.Module):
 
         # Compute the output
         # o_t = W_o @ ( W_c @ c_t + W_h @ h_t + e_t_1 )
-        o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1)  # (B, V)
+        logit_ctx = self.parser['W_c'](ct)  # (B, E)
+        logit_ht = self.parser['W_h'](h_t)  # (B, E)
+        logit_ey = self.parser['W_yo'](ey_t_1)  # (B, E)
+
+        logit = logit_ctx + logit_ht + logit_ey  # (B, E)
+
+        # reshaped logit and max out layer
+        shape = list(logit.shape)
+        shape = tuple(shape[:-1] + [shape[-1] // 2, 2])
+        logit = torch.max(logit.reshape(shape), dim=-1)[0]
+
+        o_t = self.parser['W_o'](logit)  # (B, V)
+        # o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1)  # (B, V)
 
         return o_t, h_t
+
+    def visualize(self, images, mask, labels):
+        """
+        Visualize the attention maps
+        :param images:
+        :param mask:
+        :param labels:
+        :return:
+        """
+        num_images = images.shape[0]
+        for i in range(num_images):
+            image = images[i]
+            label = labels[i]
+            mask = mask[i]
+
+            # Shrink the image where mask is 0
+            image = image * mask
+
+
+            # Watch
+            x, mask = self.watch(image, mask)
+
+            upsampler = nn.Upsample(size=image.shape, mode='bilinear', align_corners=True)
 
     def watch(self, x, mask=None):
         for i in range(self.config['num_blocks']):

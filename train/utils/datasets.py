@@ -19,8 +19,11 @@ def collate_fn(batch):
         images[i] = torch.nn.functional.pad(images[i], padding, "constant", 0)
         image_mask[i] = torch.nn.functional.pad(image_mask[i], padding, "constant", 0)
 
+
     images = torch.stack(images)
     image_mask = torch.stack(image_mask)
+
+
     labels = pad_sequence(labels, batch_first=True, padding_value=0)
     labels_mask = pad_sequence(labels_mask, batch_first=True, padding_value=0)
     seq_lens = torch.tensor(seq_len)
@@ -33,10 +36,10 @@ def get_vocabulary(csv_loc):
     """
     # Read the csv file
     with open(csv_loc, 'r') as f:
-        vocabulary = f.read().split('\n')
+        vocabulary = f.read().strip().split('\n')
 
     vocabulary.sort()
-    vocabulary = ['<PAD>', '<UNK>', '<SOS>', '<EOS>'] + vocabulary
+    vocabulary = ['<SOS>', '<EOS>'] + vocabulary
 
     return vocabulary
 
@@ -51,7 +54,7 @@ class ImageDataset(Dataset):
         self.word_to_index = {word: i for i, word in enumerate(self.vocab)}
         self.index_to_word = {i: word for i, word in enumerate(self.vocab)}
 
-        assert self.vocab[2] == '<SOS>' and self.vocab[3] == '<EOS>', 'The third and fourth element of the vocab must be <SOS> and <EOS> respectively'
+        # assert self.vocab[0] == '<SOS>' and self.vocab[0] == '<EOS>', 'The third and fourth element of the vocab must be <SOS> and <EOS> respectively'
 
     def __getitem__(self, index):
         # Load Image in grayscale, and transform it
@@ -81,8 +84,7 @@ class ImageDataset(Dataset):
         ret = []
         for word in sentence.split():
             if word not in self.word_to_index:
-                ret.append(self.word_to_index["<UNK>"])
-                continue
+                exit('Word not in vocabulary')
             ret.append(self.word_to_index[word])
         ret.append(self.word_to_index["<EOS>"])
         return  ret
