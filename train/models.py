@@ -29,17 +29,18 @@ class VanillaWAP(nn.Module):
         max_len = target.shape[1]
         x, feature_mask = self.watch(x, mask)
 
-        # Positional Encoding
-        # x = x + self.positional_encoder
-        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
-        x = x.permute(0, 2, 1)
-        feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
-        feature_mask = feature_mask.permute(0, 2, 1)
+        # # Positional Encoding
+        # # x = x + self.positional_encoder
+        # x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
+        # x = x.permute(0, 2, 1)
+        # feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
+        # feature_mask = feature_mask.permute(0, 2, 1)
 
         # RNN Decoder
 
         y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
         logit = torch.zeros((x.shape[0], max_len, self.config['vocab_size'])).to(self.config['DEVICE'])
+        alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
 
         # logit[:, 0, 2] = 0
         # While all y are not index = EOS_INDEX and max length is not reached
@@ -52,9 +53,9 @@ class VanillaWAP(nn.Module):
                 y = target[:, i - 1].unsqueeze(1)
 
             # Embedding
-            logit_t, h_t = self.parse(x, y, h_t, feature_mask)
+            logit_t, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
             logit[:, i, :] = logit_t.squeeze()
-            y = torch.argmax(logit_t.squeeze(), dim=1)
+            # y = torch.argmax(logit_t.squeeze(), dim=1)
 
             # if all y are index = EOS_INDEX, break
             # if torch.all(y == EOS_INDEX):
@@ -67,72 +68,101 @@ class VanillaWAP(nn.Module):
         Translate the input image to the corresponding latex
         :return:
         """
+        # # CNN Feature Extraction
+        # x, feature_mask = self.watch(x, mask)
+        #
+        # # RNN Decoder with beam search. Keep track of the top beam_width candidates
+        # y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
+        # ret = []
+        # alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
+        #
+        # # p, l, stop to compute the probability, length, and stop flag of each hypothesis
+        # hypo_p = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
+        # hypo_l = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
+        # hypo_stop = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE']).to(torch.bool)
+        #
+        # h_t = None
+        #
+        # for i in range(self.config['max_len']):
+        #     # If all y are index = EOS_INDEX, break
+        #     if torch.all(y == EOS_INDEX):
+        #         break
+        #     # Generate the logit for the current time step
+        #     logit_ht, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
+        #
+        #     # Get the probabilities of the top beam_width candidates
+        #
+        #     probs = torch.log_softmax(logit_ht.squeeze(), dim=-1)
+        #     hypo_l += ~hypo_stop
+        #
+        #     # Get the top beam_width candidates
+        #     if i > 0:
+        #         probs = (probs + ~hypo_stop * hypo_p).permute(1, 0, 2)
+        #
+        #     hypo_p, top_idx = torch.topk(probs.reshape(x.shape[0], -1), beam_width)
+        #
+        #     # Project the top_idx to the corresponding beam_index and token_index
+        #     beam_idx = (top_idx // self.config['vocab_size']).permute(1, 0)
+        #     y = (top_idx % self.config['vocab_size']).permute(1, 0).unsqueeze(-1)
+        #
+        #     # Get the hypothesis length, probability, and stop flag based on the beam_idx
+        #     hypo_l = torch.gather(hypo_l, 0, beam_idx.unsqueeze(-1))
+        #     hypo_stop = torch.gather(hypo_stop, 0, beam_idx.unsqueeze(-1))
+        #     hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
+        #
+        #     # Select the decoded sequences in ret based on the beam_idx
+        #     if len(ret) != 0:
+        #         b = beam_idx.unsqueeze(-1).expand(-1, -1, ret.shape[-1])
+        #         ret = torch.gather(ret, 0, b)
+        #         ret = torch.cat((ret, y), dim=-1)
+        #     else:
+        #         ret = y
+        #
+        #     # Update the stop flag
+        #     hypo_stop = ((y == EOS_INDEX) | hypo_stop)
+        #
+        #     if torch.all(hypo_stop):
+        #         break
+        #
+        # # Select the best candidate based on hypothesis probability / length
+        # best_idx = torch.argmax(hypo_p / hypo_l, dim=0).squeeze()
+        # ans = []
+        # for i, index in enumerate(best_idx):
+        #     ans.append(ret[index, i, :].squeeze(0))
+        #
+        # return torch.stack(ans, dim=0)
         # CNN Feature Extraction
+        max_len = self.config['max_len']
         x, feature_mask = self.watch(x, mask)
-        x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
-        x = x.permute(0, 2, 1)
-        feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
-        feature_mask = feature_mask.permute(0, 2, 1)
 
-        # RNN Decoder with beam search. Keep track of the top beam_width candidates
+        # # Positional Encoding
+        # # x = x + self.positional_encoder
+        # x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
+        # x = x.permute(0, 2, 1)
+        # feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
+        # feature_mask = feature_mask.permute(0, 2, 1)
+
+        # RNN Decoder
+
         y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
-        ret = []
+        logit = torch.zeros((x.shape[0], max_len, self.config['vocab_size'])).to(self.config['DEVICE'])
+        alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
 
-        # p, l, stop to compute the probability, length, and stop flag of each hypothesis
-        hypo_p = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
-        hypo_l = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
-        hypo_stop = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE']).to(torch.bool)
-
+        # logit[:, 0, 2] = 0
+        # While all y are not index = EOS_INDEX and max length is not reached
         h_t = None
+        for i in range(max_len):
 
-        for i in range(self.config['max_len']):
-            # If all y are index = EOS_INDEX, break
+            # Embedding
+            logit_t, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
+            logit[:, i, :] = logit_t.squeeze()
+            y = torch.argmax(logit_t.squeeze(), dim=-1)
+
+            # if all y are index = EOS_INDEX, break
             if torch.all(y == EOS_INDEX):
                 break
-            # Generate the logit for the current time step
-            logit_ht, h_t = self.parse(x, y, h_t, feature_mask)
-
-            # Get the probabilities of the top beam_width candidates
-
-            probs = torch.log_softmax(logit_ht.squeeze(), dim=-1)
-            hypo_l += ~hypo_stop
-
-            # Get the top beam_width candidates
-            if i > 0:
-                probs = (probs + ~hypo_stop * hypo_p).permute(1, 0, 2)
-
-            hypo_p, top_idx = torch.topk(probs.reshape(x.shape[0], -1), beam_width)
-
-            # Project the top_idx to the corresponding beam_index and token_index
-            beam_idx = (top_idx // self.config['vocab_size']).permute(1, 0)
-            y = (top_idx % self.config['vocab_size']).permute(1, 0).unsqueeze(-1)
-
-            # Get the hypothesis length, probability, and stop flag based on the beam_idx
-            hypo_l = torch.gather(hypo_l, 0, beam_idx.unsqueeze(-1))
-            hypo_stop = torch.gather(hypo_stop, 0, beam_idx.unsqueeze(-1))
-            hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
-
-            # Select the decoded sequences in ret based on the beam_idx
-            if len(ret) != 0:
-                b = beam_idx.unsqueeze(-1).expand(-1, -1, ret.shape[-1])
-                ret = torch.gather(ret, 0, b)
-                ret = torch.cat((ret, y), dim=-1)
-            else:
-                ret = y
-
-            # Update the stop flag
-            hypo_stop = ((y == EOS_INDEX) | hypo_stop)
-
-            if torch.all(hypo_stop):
-                break
-
-        # Select the best candidate based on hypothesis probability / length
-        best_idx = torch.argmax(hypo_p / hypo_l, dim=0).squeeze()
-        ans = []
-        for i, index in enumerate(best_idx):
-            ans.append(ret[index, i, :].squeeze(0))
-
-        return torch.stack(ans, dim=0)
+        logit = logit[:, :i, :]
+        return torch.argmax(logit, dim=-1)
     def generate_watcher(self):
         """
         Generate the model based on the config
@@ -182,32 +212,6 @@ class VanillaWAP(nn.Module):
 
         self.watcher.to(self.config['DEVICE'])
 
-    def generate_positional_encoder(self):
-        """
-        Generate 2-D Positional Encoding as per https://arxiv.org/pdf/1908.11415.pdf
-        :return:
-        """
-        x, y = torch.arange(self.config['output_dim'][0]), torch.arange(self.config['output_dim'][1],
-                                                                        requires_grad=False)
-        i, j = torch.arange(self.config['num_features_map'][-1] // 4), torch.arange(
-            self.config['num_features_map'][-1] // 4, requires_grad=False)
-        D = self.config['num_features_map'][-1]
-
-        pe = torch.zeros((D, self.config['output_dim'][0], self.config['output_dim'][1]), requires_grad=False)
-
-        x_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * i / D), x, torch.ones_like(y))
-        y_i = torch.einsum("i, j, k -> ijk", 10000 ** (4 * j / D), torch.ones_like(x), y)
-
-        x, y = x.unsqueeze(1), y.unsqueeze(0)
-        i, j = i.unsqueeze(-1).unsqueeze(-1), j.unsqueeze(-1).unsqueeze(-1)
-
-        pe[2 * i, x, y] = torch.sin(x_i)
-        pe[2 * i + 1, x, y] = torch.cos(x_i)
-        pe[2 * j + D // 2, x, y] = torch.sin(y_i)
-        pe[2 * j + 1 + D // 2, x, y] = torch.cos(y_i)
-
-        self.positional_encoder = pe.to(self.config['DEVICE'])
-
     def generate_embedder(self):
         """
         Generates the embedder
@@ -229,24 +233,35 @@ class VanillaWAP(nn.Module):
             # Initial Conversion
             "W_2h": nn.Linear(D, self.config['hidden_dim']),
 
+            # New Weights
+            # Computing Preactivation1
+            "W" : nn.Linear(self.config['embedding_dim'], 2 * self.config['hidden_dim']),
+            "U" : nn.Linear(self.config['hidden_dim'], 2 * self.config['hidden_dim'], bias=False),
+
+            # Computing Preactivation-x1
+            "Wx" : nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
+            "Ux" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim'], bias=False),
+
+            # Computing Non-Linear Preactivation1 and Preactivation-x1
+            "U_nl" : nn.Linear(self.config['hidden_dim'], 2 * self.config['hidden_dim']),
+            "Ux_nl" : nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
+
+            # Computing Context to GRU
+            "Wc" : nn.Linear(D, 2 * self.config['hidden_dim'], bias=False),
+            "Wcx" : nn.Linear(D, self.config['hidden_dim'], bias=False),
+
+            # Combined Attention
+            "W_comb_att" : nn.Linear(self.config['hidden_dim'], self.config['attention_dim'], bias=False),
+
+            # Context Translation to Attention Dimension
+            "Wc_att" : nn.Conv2d(D, self.config['attention_dim'], 1, padding='valid'),
+
             # Attention Weights
-            "U_a": nn.Linear(D, self.config['attention_dim'], bias=False),
-            "W_a": nn.Linear(self.config['hidden_dim'], self.config['attention_dim'], bias=False),
-            "nu_a": nn.Linear(self.config['attention_dim'], 1, bias=False),
+            "U_att" : nn.Linear(self.config['attention_dim'], 1, bias=False),
 
-            # Hidden Layer Weights
-            "U_hz": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
-            "U_hr": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
-            "U_rh": nn.Linear(self.config['hidden_dim'], self.config['hidden_dim']),
-
-            # Input Layer Weights
-            "W_yz": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
-            "W_yr": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
-            "W_yh": nn.Linear(self.config['embedding_dim'], self.config['hidden_dim']),
-
-            # Context Layer Weights
-            "C_cz": nn.Linear(D, self.config['hidden_dim']),
-            "C_cr": nn.Linear(D, self.config['hidden_dim']),
+            # Coverage Weights
+            "conv_q" : nn.Conv2d(1, self.config['coverage_dim'], (5, 5), padding='same'),
+            "conv_uf" : nn.Linear(self.config['coverage_dim'], self.config['attention_dim']),
 
             # Output Layer Weights
             "W_c": nn.Linear(D, self.config['embedding_dim']),
@@ -258,7 +273,7 @@ class VanillaWAP(nn.Module):
 
         self.parser.to(self.config['DEVICE'])
 
-    def parse(self, x, y, h_t_1=None, feature_mask=None):
+    def parse(self, x, y, h_t_1=None, feature_mask=None, alpha_past=None):
         """
         x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
         y is of shape (batch_size, vocab) - (B, V)
@@ -267,47 +282,74 @@ class VanillaWAP(nn.Module):
         """
 
         # Compute the initial hidden
-        # h_0 = tanh( W_h @ mean(x) + b_h )
         if h_t_1 is None:
-            # h_t_1 = torch.zeros(x.shape[0], self.config['hidden_dim'], device=self.config['DEVICE'])
-            ctx_mean = (torch.einsum('...l, ...ld -> ...d', feature_mask.squeeze(), x).squeeze() /
-                        torch.sum(feature_mask.squeeze(), dim=-1).unsqueeze(-1))
+            ctx_mean = torch.einsum('...hw, ...hw -> ...', feature_mask, x) / torch.einsum('...hw -> ...', feature_mask)
             h_t_1 = torch.tanh(self.parser['W_2h'](ctx_mean))  # (B, H)
 
         # Compute the attention weights and context vector
-        # e_t = v_a^T tanh( U_a @ x + W_a @ h_t_1 )
-        # try:
-        e_t = torch.tanh(self.parser['U_a'](x) + self.parser['W_a'](h_t_1).unsqueeze(-2))  # (B, L, A)
-        e_t = self.parser['nu_a'](e_t).squeeze() + torch.where(feature_mask == 0, -torch.inf, 1).squeeze()  # (B, L)
-        alpha_t = torch.softmax(e_t, dim=-1)  # (B, L)
-        ct = torch.einsum('...l, ...ld -> ...d', alpha_t, x.squeeze())  # (B, D) or (Beam_width, B, D)
+        state_below = self.embedder(y).squeeze()  # (B, E)
 
-        # Forward Pass through GRU
-        # Embed the target sentence
-        ey_t_1 = self.embedder(y).squeeze()  # (B, E)
+        # Translate Embedding to hidden dimension
+        state_below_ = self.parser['W'](state_below)  # (B, 2H)
+        state_belowx = self.parser['Wx'](state_below)  # (B, H)
 
-        # Compute the z gate
-        # z_t = sigmoid( W_yz @ e_t_1 + U_hz @ h_t_1 + C_cz @ c_t )
-        zt = torch.sigmoid(self.parser['W_yz'](ey_t_1) + self.parser['U_hz'](h_t_1))  # (B, H)
+        # Compute the preactivation and split it into r and u of size (B, H)
+        preact = torch.sigmoid(self.parser['U'](h_t_1) + state_below_)   # (B, 2H)
+        r, u = preact[..., :self.config['hidden_dim']], preact[..., self.config['hidden_dim']:]   # (B, H)
 
-        # Compute the reset gate
-        # r_t = sigmoid( W_yr @ e_t_1 + U_hr @ h_t_1 + C_cr @ c_t )
-        rt = torch.sigmoid(self.parser['W_yr'](ey_t_1) + self.parser['U_hr'](h_t_1))  # (B, H)
+        # Compute preactivation-x1
+        preactx = r * self.parser['Ux'](h_t_1) + state_belowx  # (B, H)
+        h_tilde = torch.tanh(preactx)  # (B, H)
+        h1 = u * h_t_1 + (1. - u) * h_tilde  # (B, H)
 
-        # Compute the candidate hidden state
-        # h_tilde = tanh( W_yh @ e_t_1 + U_rh @ (r_t * h_t_1) + C_cz @ c_t )
-        rt_ht = rt * h_t_1  # (B, H)
-        ht_tilde = torch.tanh(
-            self.parser['W_yh'](ey_t_1) + self.parser['U_rh'](rt_ht) + self.parser['C_cz'](ct))  # (B, H)
+        # Compute the Needed Context
 
-        # Compute the new hidden state
-        h_t = (1 - zt) * h_t_1 + zt * ht_tilde  # (B, H)
+        # Project the Context and the state to the attention dimension
+        pctx_ = self.parser['Wc_att'](x)  # (B, A, Height, Width)
+        pstate_ = self.parser['W_comb_att'](h1).unsqueeze(-1).unsqueeze(-1)  # (B, A, 1, 1)
+
+        # Compute the coverage
+        if len(alpha_past.shape) == 5:
+            cover_F = []
+            for _ in range(alpha_past.shape[0]):
+                cover_F.append(self.parser['conv_q'](alpha_past[_]))  # (B, A, Height, Width)
+            cover_F = torch.stack(cover_F, dim=0)
+            # alpha_shape = alpha_past.shape
+            # cover_F = self.parser['conv_q'](alpha_past.reshape(-1, alpha_shape[2], alpha_shape[3], alpha_shape[4]))  # (B, A, Height, Width)
+            # cover_F = cover_F.reshape(alpha_shape[0], -1, alpha_shape[2], alpha_shape[3], alpha_shape[4])
+            cover_vector = self.parser['conv_uf'](cover_F.permute(0, 1, 3, 4, 2)).permute(0, 1, 4, 2, 3)  # (B, 1, A, Height, Width)
+        else:
+            cover_F = self.parser['conv_q'](alpha_past)  # (B, A, Height, Width)
+            cover_vector = self.parser['conv_uf'](cover_F.permute(0, 2, 3, 1)).permute(0, 3, 1, 2)  # (B, 1, A, Height, Width)
+
+        if len(h1.shape) == 3:
+            pctx_ = pctx_.unsqueeze(0)
+            if len(alpha_past.shape) != 5:
+                cover_vector = cover_vector.unsqueeze(0)
+                alpha_past = alpha_past.unsqueeze(0)
+
+        # compute attention
+        pctx__ = torch.tanh(pctx_ + pstate_ + cover_vector)
+        pctx__ = torch.transpose(torch.transpose(pctx__, -2, -1), -3, -1)  # (B, Height, Width, A)
+        alpha = torch.exp(self.parser['U_att'](pctx__).squeeze() + torch.where(feature_mask == 0, -torch.inf, 0).squeeze()) # (B, Height, Width)
+        alpha_t = alpha / torch.einsum('...hw -> ...', alpha).unsqueeze(-1).unsqueeze(-1)  # (B, Height, Width)
+        alpha_past = alpha_past + alpha_t.unsqueeze(-3)  # (B, 1, Height, Width)
+
+        # Compute Context
+        ct = torch.einsum('...hw, ...dhw -> ...d', alpha_t, x)  # (B, D) or (Beam_width, B, D)
+
+        # Layer two Computation
+        preactivation2 = torch.sigmoid(self.parser['U_nl'](h1) + self.parser['Wc'](ct))   # (B, 2*H)
+        r2, u2 = preactivation2[..., :self.config['hidden_dim']], preactivation2[..., self.config['hidden_dim']:]   # (B, H)
+
+        h_tilde = torch.tanh(r2 * self.parser['Ux_nl'](h1) + self.parser['Wcx'](ct))  # (B, H)
+
+        ht = u2 * h1 + (1. - u2) * h_tilde  # (B, H)
 
         # Compute the output
-        # o_t = W_o @ ( W_c @ c_t + W_h @ h_t + e_t_1 )
         logit_ctx = self.parser['W_c'](ct)  # (B, E)
-        logit_ht = self.parser['W_h'](h_t)  # (B, E)
-        logit_ey = self.parser['W_yo'](ey_t_1)  # (B, E)
+        logit_ht = self.parser['W_h'](ht)  # (B, E)
+        logit_ey = self.parser['W_yo'](state_below)  # (B, E)
 
         logit = logit_ctx + logit_ht + logit_ey  # (B, E)
 
@@ -317,9 +359,8 @@ class VanillaWAP(nn.Module):
         logit = torch.max(logit.reshape(shape), dim=-1)[0]
 
         o_t = self.parser['W_o'](logit)  # (B, V)
-        # o_t = self.parser['W_o'](self.parser['W_c'](ct) + self.parser['W_h'](h_t) + ey_t_1)  # (B, V)
 
-        return o_t, h_t
+        return o_t, ht, alpha_past
 
     def visualize(self, images, mask, labels):
         """
@@ -337,7 +378,6 @@ class VanillaWAP(nn.Module):
 
             # Shrink the image where mask is 0
             image = image * mask
-
 
             # Watch
             x, mask = self.watch(image, mask)

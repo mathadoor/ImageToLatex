@@ -173,9 +173,9 @@ for i in range(train_params['epochs']):
         for x, x_mask, y, l, label_mask in tqdm(dataloader_val):
             # Set model to eval mode
             # max_len = y.shape[1]
-            logit = model(x, mask=x_mask, target=y)
-            y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
-            # y_pred = model.translate(x, mask=x_mask)
+            # logit = model(x, mask=x_mask, target=y)
+            # y_pred = torch.argmax(logit, dim=-1).detach().cpu().numpy()
+            y_pred = model.translate(x, mask=x_mask)
             # Compute Loss as cross entropy
             # Computer WER
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]
