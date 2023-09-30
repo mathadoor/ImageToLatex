@@ -1,8 +1,18 @@
 __pycache__/
-data/
 .idea/
 kaggle.json
 *.$*
 .env
 *.bkp
-checkpoints
+
+# Data Files to ignore
+/data/*.zip
+/data/CROHME/val/
+/data/CROHME/train/IMG/
+/data/CROHME/train/IMG_LABELS/
+/data/CROHME/train/IMG_RENDERED/
+/data/CROHME/train/IMG_RND_LABELS/
+/data/CROHME/train/INKML/
+/data/CROHME/train/NEW_IMG_LABELS/
+/data/CROHME/train/SYNTHETIC/
+/data/CROHME/train/SYNTHETIC_IMG_RENDERED/

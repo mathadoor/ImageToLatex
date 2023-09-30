@@ -6,8 +6,9 @@ import numpy as np
 from translator import inference
 import matplotlib.pyplot as plt
 
+# The following functions are copied from https://github.com/vivien000/st-click-detector/issues/4 to display local
+# images
 
-# The following functions are copied from https://github.com/vivien000/st-click-detector/issues/4 to display local images
 def base64img(path: str):
     with open(path, 'rb') as f:
         data = base64.b64encode(f.read()).decode('utf-8')
@@ -44,6 +45,7 @@ else:
     else:
         st.write('Please select an image from the above thumbnails.')
 
+numpy_array = None
 if input_image is not None:
     image = Image.open(input_image)
     numpy_array = np.array(image)
@@ -55,11 +57,44 @@ if input_image is not None:
 
 clicked = st.button('Translate Text')
 
+labels_clicked = []
+alphas = None
 if clicked and input_image is not None:
     model = inference.load_model()
     label, alphas = inference.translate(model, input_image)
     st.write('### Translated Latex Encoding:')
     st.write(label)
+    # Show the tokens as buttons
+    # label_show = label.split(' ')
+    # max_val = 100
+    # a, b = 0.98, 6
+    # num_labels = len(label_show)
+    # curr_l = 0
+    # columns_array = []
+    # start = 0
+    # for i in range(num_labels):
+    #     l = label_show[i]
+    #     new_l = a * len(l) + b
+    #     if curr_l + new_l <= max_val and i != num_labels - 1:
+    #         columns_array += [new_l]
+    #         curr_l += new_l
+    #     elif len(columns_array) != 0:
+    #         columns_array = columns_array if curr_l == max_val else columns_array + [max_val - curr_l]
+    #         columns = st.columns(columns_array)
+    #         for j in range(start, i):
+    #             with columns[j - start]:
+    #                 labels_clicked.append(st.button(label_show[j], key=j, use_container_width=True))
+    #
+    #         start = i
+    #         if curr_l + new_l > max_val:
+    #             columns_array = [new_l]
+    #             curr_l = new_l
+    #         else:
+    #             columns_array = []
+    #             curr_l = 0
+
     input_image = None
 elif clicked:
     st.write('Please upload an image or select one from the above thumbnails.')
+
+
