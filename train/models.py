@@ -68,84 +68,14 @@ class VanillaWAP(nn.Module):
         Translate the input image to the corresponding latex
         :return:
         """
-        # # CNN Feature Extraction
-        # x, feature_mask = self.watch(x, mask)
-        #
-        # # RNN Decoder with beam search. Keep track of the top beam_width candidates
-        # y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
-        # ret = []
-        # alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
-        #
-        # # p, l, stop to compute the probability, length, and stop flag of each hypothesis
-        # hypo_p = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
-        # hypo_l = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE'])
-        # hypo_stop = torch.zeros((beam_width, x.shape[0], 1)).to(self.config['DEVICE']).to(torch.bool)
-        #
-        # h_t = None
-        #
-        # for i in range(self.config['max_len']):
-        #     # If all y are index = EOS_INDEX, break
-        #     if torch.all(y == EOS_INDEX):
-        #         break
-        #     # Generate the logit for the current time step
-        #     logit_ht, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
-        #
-        #     # Get the probabilities of the top beam_width candidates
-        #
-        #     probs = torch.log_softmax(logit_ht.squeeze(), dim=-1)
-        #     hypo_l += ~hypo_stop
-        #
-        #     # Get the top beam_width candidates
-        #     if i > 0:
-        #         probs = (probs + ~hypo_stop * hypo_p).permute(1, 0, 2)
-        #
-        #     hypo_p, top_idx = torch.topk(probs.reshape(x.shape[0], -1), beam_width)
-        #
-        #     # Project the top_idx to the corresponding beam_index and token_index
-        #     beam_idx = (top_idx // self.config['vocab_size']).permute(1, 0)
-        #     y = (top_idx % self.config['vocab_size']).permute(1, 0).unsqueeze(-1)
-        #
-        #     # Get the hypothesis length, probability, and stop flag based on the beam_idx
-        #     hypo_l = torch.gather(hypo_l, 0, beam_idx.unsqueeze(-1))
-        #     hypo_stop = torch.gather(hypo_stop, 0, beam_idx.unsqueeze(-1))
-        #     hypo_p = hypo_p.permute(1, 0).unsqueeze(-1)
-        #
-        #     # Select the decoded sequences in ret based on the beam_idx
-        #     if len(ret) != 0:
-        #         b = beam_idx.unsqueeze(-1).expand(-1, -1, ret.shape[-1])
-        #         ret = torch.gather(ret, 0, b)
-        #         ret = torch.cat((ret, y), dim=-1)
-        #     else:
-        #         ret = y
-        #
-        #     # Update the stop flag
-        #     hypo_stop = ((y == EOS_INDEX) | hypo_stop)
-        #
-        #     if torch.all(hypo_stop):
-        #         break
-        #
-        # # Select the best candidate based on hypothesis probability / length
-        # best_idx = torch.argmax(hypo_p / hypo_l, dim=0).squeeze()
-        # ans = []
-        # for i, index in enumerate(best_idx):
-        #     ans.append(ret[index, i, :].squeeze(0))
-        #
-        # return torch.stack(ans, dim=0)
         # CNN Feature Extraction
         max_len = self.config['max_len']
         x, feature_mask = self.watch(x, mask)
 
-        # # Positional Encoding
-        # # x = x + self.positional_encoder
-        # x = torch.reshape(x, (x.shape[0], x.shape[1], -1))
-        # x = x.permute(0, 2, 1)
-        # feature_mask = torch.reshape(feature_mask, (feature_mask.shape[0], feature_mask.shape[1], -1))
-        # feature_mask = feature_mask.permute(0, 2, 1)
-
         # RNN Decoder
 
         y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
-        logit = torch.zeros((x.shape[0], max_len, self.config['vocab_size'])).to(self.config['DEVICE'])
+        ret = []
         alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
 
         # logit[:, 0, 2] = 0
@@ -155,14 +85,14 @@ class VanillaWAP(nn.Module):
 
             # Embedding
             logit_t, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
-            logit[:, i, :] = logit_t.squeeze()
             y = torch.argmax(logit_t.squeeze(), dim=-1)
+            ret.append(y)
 
             # if all y are index = EOS_INDEX, break
             if torch.all(y == EOS_INDEX):
                 break
-        logit = logit[:, :i, :]
-        return torch.argmax(logit, dim=-1)
+        print(ret)
+        return torch.stack(ret, dim=1)
     def generate_watcher(self):
         """
         Generate the model based on the config

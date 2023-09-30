@@ -3,6 +3,28 @@ from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 from PIL import Image
 
+SOS_INDEX = 0
+EOS_INDEX = 1
+
+
+def convert_to_string(tensor, index_to_word):
+    """
+    :param tensor: (B, L)
+    :param index_to_word: dict
+    :return:
+    """
+    tensor = tensor.tolist()
+    string = ''
+    for i in tensor:
+        if i in [SOS_INDEX]:
+            continue
+        if i == EOS_INDEX:
+            break
+        string += index_to_word[i] + ' '
+
+    return string.strip()
+
+
 def collate_fn(batch):
     # Separate inputs and labels
     images, image_mask, labels, seq_len, labels_mask = zip(*batch)
@@ -15,19 +37,18 @@ def collate_fn(batch):
     images = list(images)
     image_mask = list(image_mask)
     for i in range(len(images)):
-        padding = (0, max_w-images[i].shape[2], 0, max_h-images[i].shape[1])
+        padding = (0, max_w - images[i].shape[2], 0, max_h - images[i].shape[1])
         images[i] = torch.nn.functional.pad(images[i], padding, "constant", 0)
         image_mask[i] = torch.nn.functional.pad(image_mask[i], padding, "constant", 0)
 
-
     images = torch.stack(images)
     image_mask = torch.stack(image_mask)
-
 
     labels = pad_sequence(labels, batch_first=True, padding_value=0)
     labels_mask = pad_sequence(labels_mask, batch_first=True, padding_value=0)
     seq_lens = torch.tensor(seq_len)
     return images, image_mask, labels, seq_lens, labels_mask
+
 
 def get_vocabulary(csv_loc):
     """
@@ -42,6 +63,7 @@ def get_vocabulary(csv_loc):
     vocabulary = ['<SOS>', '<EOS>'] + vocabulary
 
     return vocabulary
+
 
 class ImageDataset(Dataset):
     def __init__(self, image_paths, labels, vocab_loc, device, transform=None):
@@ -87,4 +109,4 @@ class ImageDataset(Dataset):
                 exit('Word not in vocabulary')
             ret.append(self.word_to_index[word])
         ret.append(self.word_to_index["<EOS>"])
-        return  ret
+        return ret

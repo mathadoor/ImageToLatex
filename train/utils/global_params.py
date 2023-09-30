@@ -1,4 +1,6 @@
-import os, re, torch
+import os
+import re
+import torch
 
 # Dataset paths
 ROOT_LOC = re.findall('(.+/ImageToLatex).*', os.path.abspath(__file__))[0]
@@ -35,7 +37,7 @@ BASE_CONFIG = {
     'feature_pooling_kernel_size': [[None, None, None, (2, 2)], [None, None, None, (2, 2)],
                                     [None, None, None, (2, 2)], [None, None, None, (2, 2)]],
     'feature_pooling_stride': [[None, None, None, (2, 2)], [None, None, None, (2, 2)],
-                                    [None, None, None, (2, 2)], [None, None, None, (2, 2)]],
+                               [None, None, None, (2, 2)], [None, None, None, (2, 2)]],
     'conv_dropout': [[0] * 4, [0] * 4, [0] * 4, [0.2] * 4],
     'batch_norm': [[True] * 4, [True] * 4, [True] * 4, [True] * 4],
     'DEVICE': 'cuda' if torch.cuda.is_available() else 'cpu',
@@ -53,14 +55,14 @@ BASE_CONFIG = {
     'train_params': {
         'random_seed': 42,
         'lr': 0.0002,
-        'epochs': 200,
+        'epochs': 30,
         'lr_decay': 0.5,
         'weight_decay': 0.0001,
         'clip_grad_norm': 100,
         'lr_decay_step': 10,
         'print_every': 100,
-        'save_every': 1,
-        'save_loc': '/checkpoints/',
+        'save_every': 10,
+        'save_loc': 'checkpoints',
         'load_loc': None,
         'load': False,
         'load_epoch': 0,
