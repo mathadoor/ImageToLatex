@@ -53,7 +53,7 @@ class VanillaWAP(nn.Module):
                 y = target[:, i - 1].unsqueeze(1)
 
             # Embedding
-            logit_t, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
+            logit_t, h_t, alpha_past, alpha = self.parse(x, y, h_t, feature_mask, alpha_past)
             logit[:, i, :] = logit_t.squeeze()
             # y = torch.argmax(logit_t.squeeze(), dim=1)
 
@@ -76,6 +76,7 @@ class VanillaWAP(nn.Module):
 
         y = SOS_INDEX * torch.ones((x.shape[0], 1)).long().to(self.config['DEVICE'])
         ret = []
+        ret_alphas = []
         alpha_past = torch.zeros_like(feature_mask).to(self.config['DEVICE'])
 
         # logit[:, 0, 2] = 0
@@ -84,14 +85,15 @@ class VanillaWAP(nn.Module):
         for i in range(max_len):
 
             # Embedding
-            logit_t, h_t, alpha_past = self.parse(x, y, h_t, feature_mask, alpha_past)
+            logit_t, h_t, alpha_past, alpha = self.parse(x, y, h_t, feature_mask, alpha_past)
             y = torch.argmax(logit_t.squeeze(), dim=-1)
             ret.append(y)
+            ret_alphas.append(alpha)
 
             # if all y are index = EOS_INDEX, break
             if torch.all(y == EOS_INDEX):
                 break
-        return torch.stack(ret, dim=-1)
+        return torch.stack(ret, dim=-1), ret_alphas
     def generate_watcher(self):
         """
         Generate the model based on the config
@@ -202,7 +204,7 @@ class VanillaWAP(nn.Module):
 
         self.parser.to(self.config['DEVICE'])
 
-    def parse(self, x, y, h_t_1=None, feature_mask=None, alpha_past=None):
+    def parse(self, x, y, h_t_1=None, feature_mask=None, alpha_past=None, alpha=None):
         """
         x is of shape (batch_size, num_features_map[-1], 1, output_dim[0]*output_dim[1]) - (B, D, 1, L)
         y is of shape (batch_size, vocab) - (B, V)
@@ -289,7 +291,7 @@ class VanillaWAP(nn.Module):
 
         o_t = self.parser['W_o'](logit)  # (B, V)
 
-        return o_t, ht, alpha_past
+        return o_t, ht, alpha_past, alpha
 
     def visualize(self, images, mask, labels):
         """

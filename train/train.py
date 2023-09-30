@@ -145,7 +145,7 @@ for i in range(train_params['epochs']):
         model.eval()
         for x, x_mask, y, l, label_mask in tqdm(dataloader_val):
             # Set model to eval mode
-            y_pred = model.translate(x, mask=x_mask)
+            y_pred, _ = model.translate(x, mask=x_mask)
 
             # Computer WER
             y_pred = [convert_to_string(y_pred[i, :], dataset.index_to_word) for i in range(y_pred.shape[0])]

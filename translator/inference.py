@@ -14,7 +14,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 @st.cache_resource
 def load_model():
-    print('load model')
     with torch.no_grad():
         model = VanillaWAP(BASE_CONFIG)
         model_loc = os.path.join(BASE_CONFIG['root_loc'], BASE_CONFIG['train_params']['save_loc'])
@@ -35,7 +34,7 @@ def translate(_model, content_image):
     mask = torch.ones_like(img).to(device)
 
     with torch.no_grad():
-        tokenized_label = _model.translate(img, mask=mask)
+        tokenized_label, alphas = _model.translate(img, mask=mask)
 
     label = convert_to_string(tokenized_label, index_to_word)
-    return label
+    return label, alphas

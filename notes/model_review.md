@@ -23,7 +23,7 @@ a character embedding. The words are appropriated parsed and normalized. A separ
 unnormalized property to recover the original character for example allCaps, upperInitial, lowercase,
 mixedCaps, noinfo. 
 
-### 3. [Watch, stand, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
+### 3. [Watch, attend, and parse](http://home.ustc.edu.cn/~xysszjs/paper/PR2017.pdf)
 Similar setup as before except in this case we encode the image with CNN and then use LSTM with attention mechanism to 
 decode the sequence. They started from a model architecture similar to the one used for [image captioning](https://www.cv-foundation.org/openaccess/content_cvpr_2015/papers/Vinyals_Show_and_Tell_2015_CVPR_paper.pdf)
 
