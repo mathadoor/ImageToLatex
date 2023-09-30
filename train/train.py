@@ -154,7 +154,7 @@ for i in range(train_params['epochs']):
 
             # Update Val_WER
             wer.update(y_pred, y_true)
-            val_wer.update(wer.compute())
+            val_wer.update(wer.compute().detach().cpu().item())
             val_expr.update(compute_expr_rate(y_pred, y_true))
 
     print(f'\tValidation WER during epoch {i}: {val_wer.compute()}')
@@ -178,7 +178,7 @@ for i in range(train_params['epochs']):
     # Save model
     model.save(iteration=i)
 
-x = torch.range(0, len(losses))
+x = [i for i in range(len(losses))]
 plt.plot(x, losses, label='Training Loss')
 plt.title('Training Loss')
 plt.xlabel('Epochs')

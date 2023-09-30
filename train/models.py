@@ -91,8 +91,7 @@ class VanillaWAP(nn.Module):
             # if all y are index = EOS_INDEX, break
             if torch.all(y == EOS_INDEX):
                 break
-        print(ret)
-        return torch.stack(ret, dim=1)
+        return torch.stack(ret, dim=-1)
     def generate_watcher(self):
         """
         Generate the model based on the config
