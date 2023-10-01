@@ -3,7 +3,7 @@ import re
 import torch
 
 # Dataset paths
-ROOT_LOC = re.findall('(.+/ImageToLatex).*', os.path.abspath(__file__))[0]
+ROOT_LOC = ''
 CROHME_PATH = os.path.join(ROOT_LOC, 'data/CROHME')
 CROHME_TRAIN = os.path.join(CROHME_PATH, 'train')
 CROHME_VAL = os.path.join(CROHME_PATH, 'val')
