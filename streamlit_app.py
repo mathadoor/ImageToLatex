@@ -83,18 +83,17 @@ image_arrays = [
 st.title('Handwritten Equations to Latex Translator')
 
 st.write('### Introduction:')
-st.write('''This is a demo of a model that translates handwritten equations to latex. The model was trained on the 
-[CROHME](https://researchdata.edu.au/crohme-competition-recognition-expressions-png/639782) dataset. The model implements
+st.write('''This page serves to demonstrate a machine learning based object character recognition system. The underlying model was trained on the 
+[CROHME](https://researchdata.edu.au/crohme-competition-recognition-expressions-png/639782) dataset. It implements
 the watch-attend-parse architecture from [this paper](https://www.sciencedirect.com/science/article/pii/S0031320317302376). 
 The details of the project can be found in its [repository](https://github.com/mathadoor/ImageToLatex). 
 
-The application on this page is a demo of the model. It provides two ways to the user to select an image to translate.
-The first is to select an image from a pre-existing set of images. The second is to upload an image. The user can then
-click on the translate button to translate the image. Subsequently, the user can toggle the attention map, and click on
-the tokens to see which parts of the image the model is attending to. 
+The application on this page offers interaction with the inference harness of the system. The interface provides two methods to select an image to translate.
+The first allow selection from image from a pre-existing set of images. The second is to upload an image. The user can then
+click on the translate button to decode the image into the corresponding LaTeX encoding. Subsequently, a toggle option is presented to enable the attention maps, and visualize
+the image patches the model is attending to, corresponding to each decoded token. 
 
-Note: The model is not perfect and can make mistakes. Also, it is not trained on all possible symbols and can make
- mistakes on the ones it has not seen''')
+Note: The model is trained under limited compute and data. As such, it may not give reasonable performance on out-of-distribution samples and all possible symbols in LaTeX.''')
 
 # Define the input image options
 st.write('### Input image:')
