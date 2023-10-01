@@ -2,8 +2,12 @@
 
 ## Overview
 The project is motivated by the need to build an open source application to convert images of handwritten mathematical 
-expression to its corresponding LaTeX. The application can be run as a streamlit application.  
-
+expression to its corresponding LaTeX. The model demonstration can be accessed at this [link](https://image2latex.streamlit.app/).  
+<table>
+  <tr>
+    <td><img src="assets/demo.gif"  width="640" height="360"></td>
+  </tr>
+</table>
 ## Background and Motivation
 LaTeX is one of the most celebrated package of choice for writing rich textual documents especially for writing 
 mathematical equations. Typically, most mathematical analysis starts from pen and paper as it has lower cognitive 
@@ -52,19 +56,15 @@ are shown below.
   </tr>
 </table>
 
-## Application
+## Practical Applications and Limitations
 
-
-## Practical Applications
-
-
-## Milestones
-[x] Complete Literature review of the datasets and the available models  
-[x] Train translator  
-[x] Create the front end of the web app  
-[x] Create the backend of the web app and hook it up to the front-end.  
-[x] Documentation - lessons learned, future improvements etc.  
-[x] Post the app for demonstration
+The model can be used to convert handwritten mathematical expressions to LaTeX. The model can also be isolated and embedded
+into a distributed inference harness to be used as an API service. However, it is important to note that model performance
+is limited due to the available compute and the variety of data. For example, the model is trained on a dataset cantaining
+about 8000 images and 110 symbols. As we know, there are many more symbols in LaTeX. Thus, the model is limited in its
+ability to generalize to unseen symbols. A reasonable improvement can be brought to the model by training on a much larger
+dataset, more compute, employing a more sophisticated and capacious model, and using appropriate regularization techniques
+to improve generalization. 
 
 ## References
 [1] Longcamp, M., Zerbato-Poudou, M. T., & Velay, J. L. (2005). The influence of writing practice on letter recognition in preschool children: A comparison between handwriting and typing. Acta psychologica, 119(1), 67-79.  
