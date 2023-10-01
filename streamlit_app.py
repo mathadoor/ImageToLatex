@@ -57,8 +57,8 @@ st.title('Handwritten Equations to Latex Translator')
 st.write('### Introduction:')
 st.write('''This is a demo of a model that translates handwritten equations to latex. The model was trained on the 
 [CROHME](https://researchdata.edu.au/crohme-competition-recognition-expressions-png/639782) dataset. The model implements
-the watch-attend-parse architecture from [this paper](https://arxiv.org/abs/1707.01294). The details of the project
-can be found in its [repository](https://github.com/mathadoor/ImageToLatex). 
+the watch-attend-parse architecture from [this paper](https://www.sciencedirect.com/science/article/pii/S0031320317302376). 
+The details of the project can be found in its [repository](https://github.com/mathadoor/ImageToLatex). 
 
 The application on this page is a demo of the model. It provides two ways to the user to select an image to translate.
 The first is to select an image from a pre-existing set of images. The second is to upload an image. The user can then

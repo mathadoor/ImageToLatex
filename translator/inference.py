@@ -19,7 +19,7 @@ def load_model():
     with torch.no_grad():
         model = VanillaWAP(BASE_CONFIG)
         model_loc = os.path.join(BASE_CONFIG['root_loc'], BASE_CONFIG['train_params']['save_loc'])
-        state_dict = torch.load('checkpoints/model_30.pth', map_location=device)
+        state_dict = torch.load('checkpoints/model_best.pth', map_location=device)
 
         model.load_state_dict(state_dict)
         model.eval().to(device)
