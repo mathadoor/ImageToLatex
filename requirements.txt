@@ -67,3 +67,4 @@ tzlocal==5.0.1
 validators==0.22.0
 watchdog==3.0.0
 Werkzeug==2.3.6
+streamlit-drawable-canvas==0.9.3

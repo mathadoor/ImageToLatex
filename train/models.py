@@ -88,7 +88,7 @@ class VanillaWAP(nn.Module):
             logit_t, h_t, alpha_past, alpha = self.parse(x, y, h_t, feature_mask, alpha_past)
             y = torch.argmax(logit_t.squeeze(), dim=-1)
             ret.append(y)
-            ret_alphas.append(alpha.detach().cpu().numpy())
+            ret_alphas.append(alpha)
 
             # if all y are index = EOS_INDEX, break
             if torch.all(y == EOS_INDEX):
@@ -291,7 +291,7 @@ class VanillaWAP(nn.Module):
 
         o_t = self.parser['W_o'](logit)  # (B, V)
 
-        return o_t, ht, alpha_past, alpha
+        return o_t, ht, alpha_past, alpha_t
 
     def visualize(self, images, mask, labels):
         """
