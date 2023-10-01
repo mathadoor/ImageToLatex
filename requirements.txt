@@ -13,3 +13,4 @@ torchvision~=0.15.2
 torcheval~=0.0.6
 streamlit~=1.27.1
 st-click-detector
+seaborn
