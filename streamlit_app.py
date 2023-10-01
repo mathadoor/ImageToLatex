@@ -139,9 +139,10 @@ if clicked and st.session_state['selected_image'] is not None:
 # Define the token display options
 attention_show = st.toggle('Show Attention Map', value=False)
 if st.session_state['label'] is not None and st.session_state['selected_image'] is not None:
-    st.write('### Translated Latex Encoding:')
+    st.write('### Translated Latex:')
     if not attention_show:
-        st.write(st.session_state['label'])
+        st.markdown("**Encoding**: " + st.session_state['label'])
+        st.markdown("**Rendered Equation**: $" + st.session_state['label'] + "$")
     else:
         st.caption('Click on a token to see the attention map i.e what corresponding image patches are being attended '
                    'to')
