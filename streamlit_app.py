@@ -89,11 +89,11 @@ the watch-attend-parse architecture from [this paper](https://www.sciencedirect.
 The details of the project can be found in its [repository](https://github.com/mathadoor/ImageToLatex). 
 
 The application on this page offers interaction with the inference harness of the system. The interface provides two methods to select an image to translate.
-The first allow selection from image from a pre-existing set of images. The second is to upload an image. The user can then
-click on the translate button to decode the image into the corresponding LaTeX encoding. Subsequently, a toggle option is presented to enable the attention maps, and visualize
-the image patches the model is attending to, corresponding to each decoded token. 
+The first allows the selection from a pre-existing set of images. The second allows the user to upload an image. The user can then
+click on the translate button to decode the image into the corresponding LaTeX encodings. Subsequently, a toggle option is presented to enable the attention maps. Using these maps, 
+the user can visualize the image patches the model is attending to while decoding a certain token. 
 
-Note: The model is trained under limited compute and data. As such, it may not give reasonable performance on out-of-distribution samples and all possible symbols in LaTeX.''')
+Note: The model is trained under limited compute and data. As such, it may not give reasonable performance on out-of-distribution samples and all possible symbols of LaTeX.''')
 
 # Define the input image options
 st.write('### Input image:')
