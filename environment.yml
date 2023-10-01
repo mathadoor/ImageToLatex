@@ -184,4 +184,6 @@ dependencies:
       - typing-inspect==0.9.0
       - werkzeug==2.3.6
       - zipp==3.16.2
+      - streamlit~=1.27.1
+      - st-click-detector~=0.1.3
 prefix: /home/mathadoor/miniconda3/envs/WAP
