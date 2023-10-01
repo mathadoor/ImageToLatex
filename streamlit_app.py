@@ -6,6 +6,8 @@ import numpy as np
 from translator import inference
 import matplotlib.pyplot as plt
 
+st.set_page_config(page_title='Img2LATeX', page_icon=':pencil2:')
+
 
 # The following functions are copied from https://github.com/vivien000/st-click-detector/issues/4 to display local
 # images
@@ -18,9 +20,11 @@ def initialize_state():
     st.session_state['active_alpha'] = None
     st.session_state['type_input'] = 'From a Pre-Existing Set'
 
+
 def reset_state(key, value):
     initialize_state()
     st.session_state[key] = value
+
 
 def base64img(path: str):
     with open(path, 'rb') as f:
