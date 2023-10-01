@@ -12,6 +12,10 @@ st.set_page_config(page_title='Img2LATeX', page_icon=':pencil2:')
 # The following functions are copied from https://github.com/vivien000/st-click-detector/issues/4 to display local
 # images
 def initialize_state():
+    '''
+    Initialize the state of the app
+    :return:
+    '''
     st.session_state['initialized'] = True
     st.session_state['selected_image'] = None
     st.session_state['np_image'] = None
@@ -21,27 +25,51 @@ def initialize_state():
     st.session_state['type_input'] = 'From a Pre-Existing Set'
 
 
-def reset_state(key, value):
-    initialize_state()
-    st.session_state[key] = value
+def clean_label(_label):
+    """
+    Clean the label to be displayed. If the label is a + or -, then it is escaped so that it is not interpreted as a
+    command
+    :param _label: The label to be cleaned
+    :return: The cleaned label
+    """
+    if _label == '+':
+        return r'\+'
+    elif _label == '-':
+        return r'\-'
+    return _label
 
 
 def base64img(path: str):
+    """
+    Convert an image to base64
+    :param path: The path to the image
+    """
     with open(path, 'rb') as f:
         data = base64.b64encode(f.read()).decode('utf-8')
         return data
 
 
 def images_html(examples):
+    """
+    Create the html for the images
+    :param examples: array of paths to the images
+    :return: The html markup for the images insertion
+    """
     contents = [
         f"<a href='#' id='{i}'><img width='180' alt='{examples[i]}' src='data:image/png;base64,{base64img(path)}'></a>"
         for i, path in enumerate(examples)]
     return f'{"&nbsp;" * 2}'.join(contents)
 
 
-def active_alpha(index):
-    st.session_state['active_alpha'] = index
+def active_alpha(_index):
+    """
+    Set the active alpha to the index of the token clicked to show the attention map
+    :param _index: The index of the token clicked
+    """
+    st.session_state['active_alpha'] = _index
 
+
+# Intialize the needed state variables and the image arrays
 
 if 'initialized' not in st.session_state:
     initialize_state()
@@ -68,19 +96,18 @@ the tokens to see which parts of the image the model is attending to.
 Note: The model is not perfect and can make mistakes. Also, it is not trained on all possible symbols and can make
  mistakes on the ones it has not seen''')
 
+# Define the input image options
 st.write('### Input image:')
 st.session_state['type_input'] = st.selectbox('How would you like to input the image?',
                                               ('From a Pre-Existing Set', 'Upload Image'))
 
 if st.session_state['type_input'] == 'Upload Image':
-    reset_state('type_input', 'Upload Image')
     st.session_state['selected_image'] = st.file_uploader('Upload an image', type=['png', 'jpg', 'jpeg', 'bmp'])
 else:
     select_image = click_detector(images_html(image_arrays))
     if select_image == "":
         select_image = "0"
     st.session_state['selected_image'] = image_arrays[int(select_image)]
-
 
 if st.session_state['selected_image'] is not None:
     st.write('### Selected Image:')
@@ -100,6 +127,7 @@ if st.session_state['selected_image'] is not None:
     ax.axis('off')
     st.pyplot(fig)
 
+# Define the translating options
 clicked = st.button('Translate Text')
 
 if clicked and st.session_state['selected_image'] is not None:
@@ -108,15 +136,17 @@ if clicked and st.session_state['selected_image'] is not None:
     st.session_state['label'] = label
     st.session_state['alphas'] = alphas
 
+# Define the token display options
 attention_show = st.toggle('Show Attention Map', value=False)
-if st.session_state['label'] is not None:
+if st.session_state['label'] is not None and st.session_state['selected_image'] is not None:
     st.write('### Translated Latex Encoding:')
     if not attention_show:
         st.write(st.session_state['label'])
     else:
         st.caption('Click on a token to see the attention map i.e what corresponding image patches are being attended '
                    'to')
-        # Show the tokens as buttons
+        # Show the tokens as buttons. The buttons are arranged in columns such that the length of each button is
+        # proportional to the length of the token, and they are arranged with uniform gap.
         label_show = st.session_state['label'].split(' ')
         max_val = 100
         a, b = 0.98, 6
@@ -135,7 +165,7 @@ if st.session_state['label'] is not None:
                 columns = st.columns(columns_array)
                 for j in range(start, i):
                     with columns[j - start]:
-                        st.button(label_show[j], key=j, on_click=active_alpha, kwargs={'index': j},
+                        st.button(clean_label(label_show[j]), key=j, on_click=active_alpha, kwargs={'_index': j},
                                   use_container_width=True)
                 start = i
                 if curr_l + new_l > max_val:
