@@ -8,6 +8,7 @@ expression to its corresponding LaTeX. The model demonstration can be accessed a
     <td><img src="assets/demo2.gif"  width="640" height="360"></td>
   </tr>
 </table>
+
 ## Background and Motivation
 LaTeX is one of the most celebrated package of choice for writing rich textual documents especially for writing 
 mathematical equations. Typically, most mathematical analysis starts from pen and paper as it has lower cognitive 
