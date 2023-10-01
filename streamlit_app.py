@@ -75,7 +75,7 @@ if 'initialized' not in st.session_state:
     initialize_state()
 
 image_arrays = [
-    "data/CROHME/train/off_image_train/70_carlos_0.bmp",
+    "data/CROHME/train/off_image_train/73_herbert_0.bmp",
     "data/CROHME/train/off_image_train/93_alfonso_0.bmp",
     "data/CROHME/train/off_image_train/94_bruno_0.bmp",
 ]
@@ -161,6 +161,10 @@ if st.session_state['label'] is not None and st.session_state['selected_image'] 
                 columns_array += [new_l]
                 curr_l += new_l
             elif len(columns_array) != 0:
+                if i == num_labels - 1:
+                    i = i + 1
+                    columns_array += [new_l]
+                    curr_l += new_l
                 columns_array = columns_array if curr_l == max_val else columns_array + [max_val - curr_l]
                 columns = st.columns(columns_array)
                 for j in range(start, i):
@@ -175,4 +179,4 @@ if st.session_state['label'] is not None and st.session_state['selected_image'] 
                     columns_array = []
                     curr_l = 0
 
-        st.button('Reset Attention', key=-1, on_click=active_alpha, kwargs={'index': None}, use_container_width=True)
+        st.button('Reset Attention', key=-1, on_click=active_alpha, kwargs={'_index': None}, use_container_width=True)
