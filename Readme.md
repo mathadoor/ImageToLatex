@@ -51,8 +51,8 @@ are shown below.
 
 <table>
   <tr>
-    <td><img src="train/loss.png"  width="240" height="200"></td>
-    <td><img src="train/performance.png"  width="240" height="200"></td>
+    <td><img src="train/loss.png"  width="300" height="250"></td>
+    <td><img src="train/performance.png"  width="300" height="250"></td>
   </tr>
 </table>
 
