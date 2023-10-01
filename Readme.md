@@ -5,7 +5,7 @@ The project is motivated by the need to build an open source application to conv
 expression to its corresponding LaTeX. The model demonstration can be accessed at this [link](https://image2latex.streamlit.app/).  
 <table>
   <tr>
-    <td><img src="assets/demo.gif"  width="640" height="360"></td>
+    <td><img src="assets/demo2.gif"  width="640" height="360"></td>
   </tr>
 </table>
 ## Background and Motivation
