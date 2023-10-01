@@ -26,11 +26,13 @@ def load_model():
 
 @st.cache_resource
 def translate(_model, content_image):
-    img = Image.open(content_image)
+    img = Image.open(content_image).convert('L')
     transform = transforms.Compose([transforms.ToTensor()])
     vocab = get_vocabulary(VOCAB_LOC)
     index_to_word = {i: word for i, word in enumerate(vocab)}
     img = transform(img).unsqueeze(0).to(device)
+    if torch.mean(img) > 0.5:
+        img = 1 - img   # invert the image
     mask = torch.ones_like(img).to(device)
 
     with torch.no_grad():

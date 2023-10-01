@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 from train.utils.global_params import CROHME_TRAIN, CROHME_VAL, OG_IMG_SIZE
 
+
 def get_path(kind):
     """
     :param kind: train or val
@@ -21,6 +22,7 @@ def get_path(kind):
         return CROHME_VAL
     else:
         raise Exception("Invalid kind. Choose between train and val.")
+
 
 # GENERATE IMAGES
 def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
@@ -99,6 +101,7 @@ def generate_image(inkml_file, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         print("Error while generating the image: {}".format(inkml_file))
         return
 
+
 def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, export_label=False, label_loc=None):
     """
     :param inkml_loc: location of the INKML files
@@ -126,6 +129,7 @@ def generate_images(inkml_loc, img_loc, img_size=OG_IMG_SIZE, line_width=2, expo
         # if i == 10:
         #     break
 
+
 def extract_labels(label_loc, new_label_loc):
     """
     :param new_label_loc:
@@ -144,6 +148,7 @@ def extract_labels(label_loc, new_label_loc):
 
         with open(os.path.join(new_label_loc, label_file), 'w') as f:
             f.write(label)
+
 
 def generate_annotated_csv(img_loc, label_loc, csv_loc):
     """
@@ -204,6 +209,7 @@ def visit_node(node):
 
     return ret
 
+
 def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
     """
     :param tex_symbol_source: location of the tex symbols source file -
@@ -213,6 +219,7 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
     """
     df = pd.read_csv(tex_symbol_source)
     tokens = set()
+
     def create_tokens(row):
         '''
         :param row: row of the dataframe
@@ -241,9 +248,10 @@ def generate_tex_symbols(tex_symbol_source, tex_symbol_dest):
         f.write(tokens[0])
         for token in tokens[1:]:
             f.write('\n' + token)
+
+
 # Preprocess the data after extracting the labels. Add space between each vocab element
 def preprocess_data(csv_loc):
-
     # Read the csv file
     df = pd.read_csv(csv_loc)
 
@@ -272,14 +280,24 @@ def preprocess_data(csv_loc):
     # Export the dataframe to csv
     df.to_csv(csv_loc, index=False)
 
+
 # Get Vocabulary
+def get_handwritten_label(file_loc):
+    """
+    :param file: file containing the handwritten label
+    :return: the handwritten label
+    """
+    with open(file_loc, 'r') as f:
+        label = f.read().split("\n\n")[1]
+    return label
 
 
 # Main Function
 if __name__ == '__main__':
     # generate_images(CROHME_TRAIN + "/SYNTHETIC/", CROHME_TRAIN + "/IMG_RENDERED/",
     #                 export_label=True, label_loc=CROHME_TRAIN + "/IMG_RND_LABELS/")
-    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/", CROHME_TRAIN + "/train.csv")
+    generate_annotated_csv(CROHME_TRAIN + "/IMG_RENDERED/", CROHME_TRAIN + "/IMG_RND_LABELS/",
+                           CROHME_TRAIN + "/train.csv")
     generate_tex_symbols(CROHME_TRAIN + "/train.csv", CROHME_TRAIN + "/tex_symbols.csv")
     preprocess_data(CROHME_TRAIN + "/train.csv")
     # extract_labels(CROHME_TRAIN + "/IMG_LABELS/", CROHME_TRAIN + "/NEW_IMG_LABELS/")
